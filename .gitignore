@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+.vercel/
+.env
+.env.*
+!.env.example
+var/
+data/raw/
+data/processed/
+*.pt
+*.pkl
+*.joblib

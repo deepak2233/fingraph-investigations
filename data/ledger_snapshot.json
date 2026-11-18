@@ -1,0 +1,105 @@
+{
+  "id": "FG-001",
+  "title": "Rapid fan-out",
+  "summary": "One account sends to four counterparties within one hour.",
+  "accounts": [
+    {
+      "id": "A001",
+      "name": "Aster Trading",
+      "holder": "E001",
+      "owner": "P001",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A001",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    },
+    {
+      "id": "A002",
+      "name": "Birch Imports",
+      "holder": "E002",
+      "owner": "P001",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A002",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    },
+    {
+      "id": "A003",
+      "name": "Cedar Services",
+      "holder": "E003",
+      "owner": "P002",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A003",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    },
+    {
+      "id": "A004",
+      "name": "Delta Logistics",
+      "holder": "E004",
+      "owner": "P003",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A004",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    },
+    {
+      "id": "A005",
+      "name": "Elm Retail",
+      "holder": "E005",
+      "owner": "P004",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A005",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    },
+    {
+      "id": "A006",
+      "name": "Fern Supplies",
+      "holder": "E006",
+      "owner": "P005",
+      "owner_percentage": "60",
+      "ownership_source": "synthetic-registry-v1:A006",
+      "ownership_observed_at": "2026-11-01T00:00:00Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "T001",
+      "sender": "A001",
+      "receiver": "A002",
+      "amount": "42000",
+      "currency": "USD",
+      "timestamp": "2026-11-01T09:00:00Z",
+      "source_id": "ledger-demo:1"
+    },
+    {
+      "id": "T002",
+      "sender": "A001",
+      "receiver": "A003",
+      "amount": "38000",
+      "currency": "USD",
+      "timestamp": "2026-11-01T09:10:00Z",
+      "source_id": "ledger-demo:2"
+    },
+    {
+      "id": "T003",
+      "sender": "A001",
+      "receiver": "A004",
+      "amount": "31000",
+      "currency": "USD",
+      "timestamp": "2026-11-01T09:20:00Z",
+      "source_id": "ledger-demo:3"
+    },
+    {
+      "id": "T004",
+      "sender": "A001",
+      "receiver": "A005",
+      "amount": "29000",
+      "currency": "USD",
+      "timestamp": "2026-11-01T09:30:00Z",
+      "source_id": "ledger-demo:4"
+    }
+  ],
+  "missing_ownership": false,
+  "stale_screening": false,
+  "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+  "as_of": "2026-11-02T00:00:00Z",
+  "tenant_id": "demo",
+  "lookback_hours": 24
+}

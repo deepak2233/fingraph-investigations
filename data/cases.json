@@ -1,0 +1,436 @@
+[
+  {
+    "id": "FG-001",
+    "title": "Rapid fan-out",
+    "summary": "One account sends to four counterparties within one hour.",
+    "accounts": [
+      {
+        "id": "A001",
+        "name": "Aster Trading",
+        "holder": "E001",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A001",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A002",
+        "name": "Birch Imports",
+        "holder": "E002",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A002",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A003",
+        "name": "Cedar Services",
+        "holder": "E003",
+        "owner": "P002",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A003",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A004",
+        "name": "Delta Logistics",
+        "holder": "E004",
+        "owner": "P003",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A004",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A005",
+        "name": "Elm Retail",
+        "holder": "E005",
+        "owner": "P004",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A005",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A006",
+        "name": "Fern Supplies",
+        "holder": "E006",
+        "owner": "P005",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A006",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "T001",
+        "sender": "A001",
+        "receiver": "A002",
+        "amount": "42000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T09:00:00Z",
+        "source_id": "ledger-demo:1"
+      },
+      {
+        "id": "T002",
+        "sender": "A001",
+        "receiver": "A003",
+        "amount": "38000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T09:10:00Z",
+        "source_id": "ledger-demo:2"
+      },
+      {
+        "id": "T003",
+        "sender": "A001",
+        "receiver": "A004",
+        "amount": "31000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T09:20:00Z",
+        "source_id": "ledger-demo:3"
+      },
+      {
+        "id": "T004",
+        "sender": "A001",
+        "receiver": "A005",
+        "amount": "29000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T09:30:00Z",
+        "source_id": "ledger-demo:4"
+      }
+    ],
+    "missing_ownership": false,
+    "stale_screening": false,
+    "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+    "as_of": "2026-11-02T00:00:00Z"
+  },
+  {
+    "id": "FG-002",
+    "title": "Circular flow",
+    "summary": "Three chronological transfers return funds to the originating account.",
+    "accounts": [
+      {
+        "id": "A001",
+        "name": "Aster Trading",
+        "holder": "E001",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A001",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A002",
+        "name": "Birch Imports",
+        "holder": "E002",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A002",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A003",
+        "name": "Cedar Services",
+        "holder": "E003",
+        "owner": "P002",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A003",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A004",
+        "name": "Delta Logistics",
+        "holder": "E004",
+        "owner": "P003",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A004",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A005",
+        "name": "Elm Retail",
+        "holder": "E005",
+        "owner": "P004",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A005",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A006",
+        "name": "Fern Supplies",
+        "holder": "E006",
+        "owner": "P005",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A006",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "T005",
+        "sender": "A001",
+        "receiver": "A002",
+        "amount": "90000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T10:00:00Z",
+        "source_id": "ledger-demo:5"
+      },
+      {
+        "id": "T006",
+        "sender": "A002",
+        "receiver": "A003",
+        "amount": "88000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T10:20:00Z",
+        "source_id": "ledger-demo:6"
+      },
+      {
+        "id": "T007",
+        "sender": "A003",
+        "receiver": "A001",
+        "amount": "86000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T10:45:00Z",
+        "source_id": "ledger-demo:7"
+      }
+    ],
+    "missing_ownership": false,
+    "stale_screening": false,
+    "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+    "as_of": "2026-11-02T00:00:00Z"
+  },
+  {
+    "id": "FG-003",
+    "title": "Ordinary payments",
+    "summary": "Two payments with no configured graph motif.",
+    "accounts": [
+      {
+        "id": "A001",
+        "name": "Aster Trading",
+        "holder": "E001",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A001",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A002",
+        "name": "Birch Imports",
+        "holder": "E002",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A002",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A003",
+        "name": "Cedar Services",
+        "holder": "E003",
+        "owner": "P002",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A003",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A004",
+        "name": "Delta Logistics",
+        "holder": "E004",
+        "owner": "P003",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A004",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A005",
+        "name": "Elm Retail",
+        "holder": "E005",
+        "owner": "P004",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A005",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A006",
+        "name": "Fern Supplies",
+        "holder": "E006",
+        "owner": "P005",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A006",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "T008",
+        "sender": "A004",
+        "receiver": "A005",
+        "amount": "1800",
+        "currency": "USD",
+        "timestamp": "2026-11-01T08:00:00Z",
+        "source_id": "ledger-demo:8"
+      },
+      {
+        "id": "T009",
+        "sender": "A005",
+        "receiver": "A006",
+        "amount": "1200",
+        "currency": "USD",
+        "timestamp": "2026-11-01T15:00:00Z",
+        "source_id": "ledger-demo:9"
+      }
+    ],
+    "missing_ownership": false,
+    "stale_screening": false,
+    "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+    "as_of": "2026-11-02T00:00:00Z"
+  },
+  {
+    "id": "FG-004",
+    "title": "Ownership gap",
+    "summary": "Transaction context is valid but a source-backed owner is missing.",
+    "accounts": [
+      {
+        "id": "A001",
+        "name": "Aster Trading",
+        "holder": "E001",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A001",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A002",
+        "name": "Birch Imports",
+        "holder": "E002",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A002",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A003",
+        "name": "Cedar Services",
+        "holder": "E003",
+        "owner": "P002",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A003",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A004",
+        "name": "Delta Logistics",
+        "holder": "E004",
+        "owner": "P003",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A004",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A005",
+        "name": "Elm Retail",
+        "holder": "E005",
+        "owner": "P004",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A005",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A006",
+        "name": "Fern Supplies",
+        "holder": "E006",
+        "owner": "P005",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A006",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "T010",
+        "sender": "A001",
+        "receiver": "A002",
+        "amount": "55000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T11:00:00Z",
+        "source_id": "ledger-demo:10"
+      }
+    ],
+    "missing_ownership": true,
+    "stale_screening": false,
+    "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+    "as_of": "2026-11-02T00:00:00Z"
+  },
+  {
+    "id": "FG-005",
+    "title": "Stale screening",
+    "summary": "A cached screening snapshot is outside the demo freshness window.",
+    "accounts": [
+      {
+        "id": "A001",
+        "name": "Aster Trading",
+        "holder": "E001",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A001",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A002",
+        "name": "Birch Imports",
+        "holder": "E002",
+        "owner": "P001",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A002",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A003",
+        "name": "Cedar Services",
+        "holder": "E003",
+        "owner": "P002",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A003",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A004",
+        "name": "Delta Logistics",
+        "holder": "E004",
+        "owner": "P003",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A004",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A005",
+        "name": "Elm Retail",
+        "holder": "E005",
+        "owner": "P004",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A005",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      },
+      {
+        "id": "A006",
+        "name": "Fern Supplies",
+        "holder": "E006",
+        "owner": "P005",
+        "owner_percentage": "60",
+        "ownership_source": "synthetic-registry-v1:A006",
+        "ownership_observed_at": "2026-11-01T00:00:00Z"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "T011",
+        "sender": "A002",
+        "receiver": "A004",
+        "amount": "20000",
+        "currency": "USD",
+        "timestamp": "2026-11-01T12:00:00Z",
+        "source_id": "ledger-demo:11"
+      }
+    ],
+    "missing_ownership": false,
+    "stale_screening": true,
+    "data_origin": "authored synthetic fixture; not AMLworld or Elliptic data",
+    "as_of": "2026-11-02T00:00:00Z"
+  }
+]

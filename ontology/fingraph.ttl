@@ -1,0 +1,26 @@
+@prefix fg: <https://fingraph.example/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+fg: a owl:Ontology ; owl:versionInfo "0.1.0" ; rdfs:comment "Personal-design vocabulary; FIBO alignment is proposed, not certified." .
+fg:Party a owl:Class .
+fg:Person a owl:Class ; rdfs:subClassOf fg:Party .
+fg:LegalEntity a owl:Class ; rdfs:subClassOf fg:Party ; owl:disjointWith fg:Person .
+fg:Account a owl:Class .
+fg:Transaction a owl:Class .
+fg:OwnershipAssertion a owl:Class .
+fg:Evidence a owl:Class .
+fg:ScreeningCandidate a owl:Class .
+fg:RiskSignal a owl:Class .
+fg:Case a owl:Class .
+fg:heldBy a owl:ObjectProperty ; rdfs:domain fg:Account ; rdfs:range fg:Party .
+fg:sender a owl:ObjectProperty ; rdfs:domain fg:Transaction ; rdfs:range fg:Account .
+fg:receiver a owl:ObjectProperty ; rdfs:domain fg:Transaction ; rdfs:range fg:Account .
+fg:amount a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+fg:currency a owl:DatatypeProperty ; rdfs:range xsd:string .
+fg:occurredAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+fg:owner a owl:ObjectProperty ; rdfs:domain fg:OwnershipAssertion ; rdfs:range fg:Party .
+fg:ownedEntity a owl:ObjectProperty ; rdfs:domain fg:OwnershipAssertion ; rdfs:range fg:LegalEntity .
+fg:percentage a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+fg:supportedBy a owl:ObjectProperty ; rdfs:range fg:Evidence .
+fg:sourceId a owl:DatatypeProperty ; rdfs:range xsd:string .

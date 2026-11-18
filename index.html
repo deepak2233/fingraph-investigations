@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="FinGraph financial crime investigation research workbench. Explore evidence-backed graph signals and an ontology-driven architecture using synthetic examples."
+    />
+    <title>FinGraph | Investigation Workbench</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="FinGraph home"
+        ><span class="brandmark">F<span>•</span></span> FinGraph</a
+      >
+      <div class="workspace">RESEARCH WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <button class="nav active" data-view="investigation">
+          ◈ <span>Investigations</span><small>05</small></button
+        ><button class="nav" data-view="models">◉ <span>Model lab</span></button
+        ><button class="nav" data-view="pipeline">
+          ⇄ <span>Pipeline</span></button
+        ><button class="nav" data-view="architecture">
+          ▦ <span>Architecture</span></button
+        ><button class="nav" data-view="ontology">
+          ◇ <span>Ontology & validation</span></button
+        ><button class="nav" data-view="research">
+          ▤ <span>Research library</span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="avatar">DY</div>
+        <div>Deepak Yadav<small>Research project · v0.2</small></div>
+      </div>
+    </aside>
+    <div class="shell">
+      <header>
+        <div>
+          <span class="breadcrumb">Workspace</span><span class="slash">/</span
+          ><span id="breadcrumb">Investigations</span>
+        </div>
+        <div class="header-right">
+          <span class="dot"></span>Synthetic research prototype<span
+            class="version"
+            >FG / 01</span
+          >
+        </div>
+      </header>
+      <main>
+        <div class="page-heading">
+          <div>
+            <div class="eyebrow">FINANCIAL CRIME INTELLIGENCE</div>
+            <h1 id="page-title">Follow the evidence.</h1>
+            <p id="page-subtitle">
+              Connected transactions. Source-backed context. Analyst-led
+              decisions.
+            </p>
+          </div>
+          <div class="outline-tag">RDF / OWL · SHACL · LangGraph</div>
+        </div>
+        <div class="notice">
+          <span>i</span>
+          <p>
+            Explore five investigation scenarios and three trained models. Model
+            lab uses a held-out sample from IBM AMLworld. All data is synthetic.
+          </p>
+          <a href="#" id="scope-link">View system scope ↗</a>
+        </div>
+        <section id="investigation" class="view">
+          <div class="stats">
+            <article>
+              <span>Investigation scenarios</span
+              ><strong>05 <small>synthetic fixtures</small></strong>
+            </article>
+            <article>
+              <span>Specialist workflow</span
+              ><strong>05 <small>bounded steps</small></strong>
+            </article>
+            <article>
+              <span>Decision authority</span
+              ><strong class="text-value">Human review <i>Required</i></strong>
+            </article>
+          </div>
+          <div class="workbench">
+            <section class="panel case-list">
+              <div class="panel-heading">
+                <h2>Case queue</h2>
+                <span class="muted">DEMO</span>
+              </div>
+              <label class="search"
+                ><span>⌕</span
+                ><input
+                  id="search"
+                  placeholder="Search cases…"
+                  aria-label="Search cases"
+              /></label>
+              <div id="cases"><p class="muted padded">Loading cases…</p></div>
+              <div class="queue-footer">
+                No customer records. No external actions.
+              </div>
+            </section>
+            <section class="panel canvas-panel">
+              <div class="panel-heading">
+                <div>
+                  <div class="eyebrow" id="case-id">SELECT A CASE</div>
+                  <h2 id="case-title">Transaction network</h2>
+                </div>
+                <button class="primary" id="run" disabled>
+                  Run investigation <span>↗</span>
+                </button>
+              </div>
+              <div class="graph-toolbar">
+                <span><i class="legend account"></i>Account</span
+                ><span><i class="legend owner"></i>Owner assertion</span
+                ><span class="right" id="graph-caption"
+                  >Transaction flow · USD</span
+                >
+              </div>
+              <div
+                id="network"
+                aria-label="Interactive transaction network"
+              ></div>
+              <div class="graph-note" id="node-detail">
+                Select an account to inspect its synthetic identity.
+              </div>
+              <div class="graph-footer">
+                <span id="case-summary"></span
+                ><span class="muted">Directed transfers</span>
+              </div>
+            </section>
+          </div>
+          <div id="status" role="status" aria-live="polite"></div>
+          <section class="panel results">
+            <div class="panel-heading">
+              <div>
+                <div class="eyebrow">INVESTIGATION OUTPUT</div>
+                <h2>Evidence before conclusions.</h2>
+              </div>
+              <span class="status-pill" id="result-state"
+                >Ready to investigate</span
+              >
+            </div>
+            <div id="result">
+              <div class="empty-state">
+                <div class="empty-icon">⌘</div>
+                <h3>Your investigation starts here</h3>
+                <p>
+                  Choose a case and run the workflow to inspect signals,
+                  ownership context,<br />evidence references, and a reviewable
+                  case draft.
+                </p>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section id="models" class="view hidden">
+          <div class="section-intro">
+            <h2>Measure before choosing a model.</h2>
+            <p>
+              One temporal holdout. Three approaches. Inspect the measured
+              results, then run inference on a held-out transaction.
+            </p>
+          </div>
+          <div id="model-summary" class="stats"></div>
+          <div class="panel padded">
+            <h3>Held-out benchmark</h3>
+            <p class="muted">
+              Average precision reflects ranking across thresholds.
+              Review-budget metrics evaluate the highest-scoring 1% of
+              transactions.
+            </p>
+            <div class="table-scroll">
+              <table class="evidence-table" id="metric-table"></table>
+            </div>
+            <p id="model-conclusion"></p>
+          </div>
+          <div class="model-workbench">
+            <section class="panel padded">
+              <h3>Run model inference</h3>
+              <label for="model-example">Held-out transaction</label
+              ><select id="model-example"></select>
+              <div id="model-input" class="model-input"></div>
+              <button class="primary" id="score-model">
+                Score transaction
+              </button>
+              <div id="model-output" role="status" aria-live="polite"></div>
+            </section>
+            <section class="panel padded">
+              <h3>How to read these scores</h3>
+              <p>
+                The GNN uses graph embeddings computed from history before the
+                test period. Each request runs the exported prediction heads on
+                the server.
+              </p>
+              <p>
+                Scores are uncalibrated. The cards include selected high-score,
+                positive-label, and evenly spaced examples. Dataset-wide metrics
+                use all held-out rows.
+              </p>
+              <h4>Experiment limits</h4>
+              <ul id="model-limitations"></ul>
+              <a
+                href="/docs/FinGraph_Research_and_Architecture.html"
+                target="_blank"
+                rel="noopener"
+                >Read the evaluation protocol ↗</a
+              >
+            </section>
+          </div>
+        </section>
+        <section id="pipeline" class="view hidden">
+          <div class="section-intro">
+            <h2>From event to a recorded review.</h2>
+            <p>
+              Connect an OIDC session to the private service API to ingest a
+              case, reload its saved result, and commit a review.
+            </p>
+          </div>
+          <div class="panel padded">
+            <p>
+              The public deployment provides synthetic analysis. The durable
+              service uses your configured PostgreSQL database and OIDC issuer.
+              Run the repository's Docker Compose stack to exercise ingestion
+              and persistence.
+            </p>
+            <label for="service-token">OIDC bearer token</label
+            ><input
+              id="service-token"
+              type="password"
+              autocomplete="off"
+              placeholder="Session-only token with ingest, analyst and reviewer roles"
+            /><label for="service-tenant">Tenant ID from the token</label
+            ><input id="service-tenant" value="demo" maxlength="96" />
+            <div class="review-actions">
+              <button class="primary" id="ingest-service">
+                Ingest selected scenario</button
+              ><button class="secondary" id="reload-service" disabled>
+                Reload saved case
+              </button>
+            </div>
+            <div id="service-status" role="status"></div>
+            <label for="service-reason">Review rationale</label
+            ><textarea
+              id="service-reason"
+              placeholder="Record the evidence you reviewed"
+            ></textarea>
+            <div class="review-actions">
+              <button class="primary" id="review-service" disabled>
+                Record review</button
+              ><button class="secondary" id="evidence-service" disabled>
+                Request evidence
+              </button>
+            </div>
+            <pre id="service-output"></pre>
+          </div>
+        </section>
+        <section id="architecture" class="view hidden">
+          <div class="section-intro">
+            <h2>Three planes. One evidence contract.</h2>
+            <p>
+              The public workbench runs synthetic investigations and model
+              inference. The repository includes a separate Kafka worker, SQL
+              case ledger, authenticated review API, and Neptune projection
+              adapter.
+            </p>
+          </div>
+          <p>
+            <a
+              href="/docs/FinGraph_Research_and_Architecture.html"
+              target="_blank"
+              rel="noopener"
+              >Open the full research and architecture report ↗</a
+            >
+          </p>
+          <div class="panel architecture-image">
+            <img
+              src="/architecture.svg"
+              alt="Architecture showing ingestion and validation, graph storage, five specialist workflow and analyst review, with an offline model training plane"
+            />
+          </div>
+          <div class="info-grid">
+            <article class="panel">
+              <h3>Implemented here</h3>
+              <p>
+                FastAPI, RDFLib, pySHACL, bounded SPARQL templates, five
+                deterministic LangGraph nodes, evidence-linked drafts, trained
+                model inference, and a durable service API.
+              </p>
+            </article>
+            <article class="panel">
+              <h3>Backend services</h3>
+              <p>
+                Kafka intake, transactional SQL storage, retryable RDF
+                projection, and authenticated review. Docker Compose runs the
+                local stack. Connecting the Neptune adapter requires an AWS
+                environment.
+              </p>
+            </article>
+            <article class="panel">
+              <h3>Hosting boundary</h3>
+              <p>
+                Vercel serves this workbench and short Python requests.
+                Long-lived Kafka consumers, Neptune private-network access,
+                model training, and durable workers belong in a separate backend
+                environment.
+              </p>
+            </article>
+          </div>
+        </section>
+        <section id="ontology" class="view hidden">
+          <div class="section-intro">
+            <h2>Meaning is part of the data model.</h2>
+            <p>
+              OWL defines vocabulary and semantics. SHACL validates records.
+              SPARQL retrieves explicit relationships. These solve different
+              problems.
+            </p>
+          </div>
+          <div class="info-grid">
+            <article class="panel">
+              <div class="eyebrow">SEMANTICS</div>
+              <h3>Party → Person / LegalEntity</h3>
+              <p>
+                Account → heldBy → Party<br />Transaction → sender / receiver →
+                Account<br />OwnershipAssertion → owner / ownedEntity /
+                percentage / supportedBy
+              </p>
+            </article>
+            <article class="panel">
+              <div class="eyebrow">VALIDATION</div>
+              <h3>Fail before investigation</h3>
+              <p>
+                Transactions require positive decimal amounts, one sender and
+                receiver, a three-letter currency, a typed timestamp, and a
+                source ID. Ownership assertions require supporting evidence.
+              </p>
+            </article>
+            <article class="panel">
+              <div class="eyebrow">EPISTEMIC BOUNDARY</div>
+              <h3>Unknown stays unknown</h3>
+              <p>
+                Missing ownership creates a data gap. A name similarity creates
+                a candidate. A graph pattern creates a lead. None establishes a
+                crime, a legal UBO determination, or a confirmed sanctions
+                match.
+              </p>
+            </article>
+          </div>
+          <div class="panel code-panel">
+            <h3>Source-backed direct ownership query</h3>
+            <pre>
+PREFIX fg: &lt;https://fingraph.example/ontology/&gt;
+SELECT ?account ?owner ?claim ?evidence WHERE {
+  ?account a fg:Account ; fg:heldBy ?entity .
+  ?claim a fg:OwnershipAssertion ;
+         fg:ownedEntity ?entity ; fg:owner ?owner ;
+         fg:supportedBy ?evidence .
+}</pre
+            >
+            <p class="muted">
+              Neptune is not a built-in OWL reasoner. This prototype uses RDFLib
+              and pySHACL with RDFS closure, not full OWL DL reasoning. FIBO
+              alignment is a design proposal.
+            </p>
+          </div>
+        </section>
+        <section id="research" class="view hidden">
+          <div class="section-intro">
+            <h2>Research that changes the design.</h2>
+            <p>
+              Selected foundational and AML papers, with their application and
+              limits. Each entry records its design implication and limitation.
+              Reading depth is identified per paper. FinGraph benchmark results
+              appear in Model lab.
+            </p>
+          </div>
+          <div class="research-tools">
+            <input
+              id="paper-search"
+              placeholder="Filter papers by model, method, or dataset…"
+              aria-label="Filter research papers"
+            /><span id="paper-count"></span>
+          </div>
+          <div id="papers" class="paper-grid"></div>
+        </section>
+        <footer>
+          <span>FinGraph / Ontology-driven financial crime investigations</span
+          ><span>Personal research design · 2026</span>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

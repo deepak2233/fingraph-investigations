@@ -1,0 +1,780 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FinGraph research and architecture</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f5f3;color:#233b30;font:16px/1.7 Inter,Arial,sans-serif}header{background:#173f30;color:#fff;padding:48px max(24px,calc((100vw - 1050px)/2))}header p{color:#bcd9c8}main{max-width:1120px;margin:auto;padding:38px 38px 80px;background:white}h1{font-size:38px;line-height:1.2}h2{margin-top:54px;padding-top:20px;border-top:1px solid #dce6df;font-size:25px;line-height:1.3}h3{font-size:18px;margin-top:30px}p{max-width:1000px}a{color:#157050;overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;font-size:13px;margin:24px 0}th{text-align:left;background:#edf4ef}td,th{padding:10px;border:1px solid #dce6df;vertical-align:top}code{font-size:12px;background:#eef4f0;padding:2px 4px;overflow-wrap:anywhere}pre{padding:18px;background:#eef4f0;overflow:auto}svg{width:100%;height:auto}footer{padding:20px;color:#6b7c73;text-align:center}@media(max-width:700px){main{padding:20px}h1{font-size:29px}table{display:block;overflow:auto}header{padding:30px 20px}}@media print{body{background:white}main{padding:0}header{padding:20px}h2,h3{break-after:avoid}tr,svg{break-inside:avoid}}</style></head><body><header><p>FINGRAPH / ENGINEERING & RESEARCH</p><h1>From transaction evidence<br>to a recorded investigation.</h1><p>Implementation, architecture, literature, and measured model results.</p></header><main><h1 id="fingraph-research-and-system-architecture">FinGraph research and system architecture</h1>
+<p>Deepak Yadav · Personal engineering project · Version 0.2 · 18 November 2026</p>
+<p>FinGraph turns a bounded transaction snapshot into an investigation with traceable observations, ownership evidence, and a recorded human review. The repository implements candidate generation, Kafka intake, semantic validation, a five-stage LangGraph workflow, durable SQL records, a retryable graph projection, three trained model baselines, and an inference workbench. The public Vercel app runs synthetic scenarios and benchmark inference. The private service stack runs with PostgreSQL, Kafka, and an OIDC provider.</p>
+<h2 id="1-the-user-and-the-decision">1. The user and the decision</h2>
+<p>The intended user is an AML analyst at a bank or payment institution. An alert arrives because transaction behavior deserves review. The analyst needs to establish which records support the alert, whether account holders are connected, which observations remain uncertain, and what evidence should be requested next.</p>
+<p>For example, Aster Trading sends four payments to separate counterparties within an hour. The graph-risk stage identifies the pattern. Ownership retrieval finds a shared direct owner assertion for two accounts. The evidence stage attaches the transaction IDs and registry references. The draft records the observed pattern and the open questions. An authenticated reviewer can record that the draft has been reviewed, reject it, or request further evidence. Investigation outcomes stay separate from the source ledger.</p>
+<p>A production programme would measure analyst time, unsupported statements, evidence coverage, missed important information, and disagreement between reviewers. These outcomes require an analyst study. The current engineering verification measures software behavior and benchmark model predictions.</p>
+<h2 id="2-architecture">2. Architecture</h2>
+<p><svg width="729pt" height="1090pt"
+ viewBox="0.00 0.00 728.60 1089.60" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(28.8 1060.8)">
+<title>FinGraph</title>
+<polygon fill="#f7faf8" stroke="transparent" points="-28.8,28.8 -28.8,-1060.8 699.8,-1060.8 699.8,28.8 -28.8,28.8"/>
+<text text-anchor="middle" x="335.5" y="-1008.8" font-family="Arial" font-size="24.00">FinGraph · executable architecture</text>
+<g id="clust1" class="cluster">
+<title>cluster_ingest</title>
+<path fill="#f7faf8" stroke="#c9dbd0" d="M20,-299.5C20,-299.5 230,-299.5 230,-299.5 236,-299.5 242,-305.5 242,-311.5 242,-311.5 242,-778 242,-778 242,-784 236,-790 230,-790 230,-790 20,-790 20,-790 14,-790 8,-784 8,-778 8,-778 8,-311.5 8,-311.5 8,-305.5 14,-299.5 20,-299.5"/>
+<text text-anchor="middle" x="125" y="-766.8" font-family="Arial" font-size="24.00">Event pipeline</text>
+</g>
+<g id="clust2" class="cluster">
+<title>cluster_case</title>
+<path fill="#f7faf8" stroke="#c9dbd0" d="M262,-8C262,-8 567,-8 567,-8 573,-8 579,-14 579,-20 579,-20 579,-388 579,-388 579,-394 573,-400 567,-400 567,-400 262,-400 262,-400 256,-400 250,-394 250,-388 250,-388 250,-20 250,-20 250,-14 256,-8 262,-8"/>
+<text text-anchor="middle" x="414.5" y="-376.8" font-family="Arial" font-size="24.00">Investigation and review</text>
+</g>
+<g id="clust3" class="cluster">
+<title>cluster_ml</title>
+<path fill="#f7faf8" stroke="#c4d4df" d="M349,-526C349,-526 651,-526 651,-526 657,-526 663,-532 663,-538 663,-538 663,-978 663,-978 663,-984 657,-990 651,-990 651,-990 349,-990 349,-990 343,-990 337,-984 337,-978 337,-978 337,-538 337,-538 337,-532 343,-526 349,-526"/>
+<text text-anchor="middle" x="500" y="-966.8" font-family="Arial" font-size="24.00">Reproducible ML experiment</text>
+</g>
+<!-- ledger -->
+<g id="node1" class="node">
+<title>ledger</title>
+<path fill="white" stroke="#b5cfc0" d="M221.5,-748C221.5,-748 28.5,-748 28.5,-748 22.5,-748 16.5,-742 16.5,-736 16.5,-736 16.5,-716 16.5,-716 16.5,-710 22.5,-704 28.5,-704 28.5,-704 221.5,-704 221.5,-704 227.5,-704 233.5,-710 233.5,-716 233.5,-716 233.5,-736 233.5,-736 233.5,-742 227.5,-748 221.5,-748"/>
+<text text-anchor="middle" x="125" y="-729.4" font-family="Arial" font-size="12.00">Canonical ledger snapshot</text>
+<text text-anchor="middle" x="125" y="-716.4" font-family="Arial" font-size="12.00">Resolved account IDs and evidence</text>
+</g>
+<!-- builder -->
+<g id="node2" class="node">
+<title>builder</title>
+<path fill="white" stroke="#b5cfc0" d="M216,-663C216,-663 44,-663 44,-663 38,-663 32,-657 32,-651 32,-651 32,-631 32,-631 32,-625 38,-619 44,-619 44,-619 216,-619 216,-619 222,-619 228,-625 228,-631 228,-631 228,-651 228,-651 228,-657 222,-663 216,-663"/>
+<text text-anchor="middle" x="130" y="-644.4" font-family="Arial" font-size="12.00">Candidate builder</text>
+<text text-anchor="middle" x="130" y="-631.4" font-family="Arial" font-size="12.00">Bounded event&#45;time rule checks</text>
+</g>
+<!-- ledger&#45;&gt;builder -->
+<g id="edge1" class="edge">
+<title>ledger&#45;&gt;builder</title>
+<path fill="none" stroke="#729a84" d="M126.29,-703.63C126.9,-693.48 127.64,-681.21 128.29,-670.31"/>
+<polygon fill="#729a84" stroke="#729a84" points="130.76,-670.15 128.73,-663.01 125.87,-669.85 130.76,-670.15"/>
+</g>
+<!-- kafka -->
+<g id="node3" class="node">
+<title>kafka</title>
+<path fill="white" stroke="#b5cfc0" d="M187.5,-578C187.5,-578 80.5,-578 80.5,-578 74.5,-578 68.5,-572 68.5,-566 68.5,-566 68.5,-546 68.5,-546 68.5,-540 74.5,-534 80.5,-534 80.5,-534 187.5,-534 187.5,-534 193.5,-534 199.5,-540 199.5,-546 199.5,-546 199.5,-566 199.5,-566 199.5,-572 193.5,-578 187.5,-578"/>
+<text text-anchor="middle" x="134" y="-559.4" font-family="Arial" font-size="12.00">Kafka case events</text>
+<text text-anchor="middle" x="134" y="-546.4" font-family="Arial" font-size="12.00">Versioned envelope</text>
+</g>
+<!-- builder&#45;&gt;kafka -->
+<g id="edge2" class="edge">
+<title>builder&#45;&gt;kafka</title>
+<path fill="none" stroke="#729a84" d="M131.03,-618.63C131.52,-608.48 132.11,-596.21 132.64,-585.31"/>
+<polygon fill="#729a84" stroke="#729a84" points="135.1,-585.12 132.99,-578.01 130.2,-584.89 135.1,-585.12"/>
+</g>
+<!-- worker -->
+<g id="node4" class="node">
+<title>worker</title>
+<path fill="white" stroke="#b5cfc0" d="M220.5,-483C220.5,-483 53.5,-483 53.5,-483 47.5,-483 41.5,-477 41.5,-471 41.5,-471 41.5,-451 41.5,-451 41.5,-445 47.5,-439 53.5,-439 53.5,-439 220.5,-439 220.5,-439 226.5,-439 232.5,-445 232.5,-451 232.5,-451 232.5,-471 232.5,-471 232.5,-477 226.5,-483 220.5,-483"/>
+<text text-anchor="middle" x="137" y="-464.4" font-family="Arial" font-size="12.00">Intake worker</text>
+<text text-anchor="middle" x="137" y="-451.4" font-family="Arial" font-size="12.00">Contract and SHACL validation</text>
+</g>
+<!-- kafka&#45;&gt;worker -->
+<g id="edge3" class="edge">
+<title>kafka&#45;&gt;worker</title>
+<path fill="none" stroke="#729a84" d="M134.68,-533.9C135.1,-520.94 135.64,-504.18 136.09,-490.1"/>
+<polygon fill="#729a84" stroke="#729a84" points="138.54,-490.1 136.32,-483.02 133.65,-489.94 138.54,-490.1"/>
+</g>
+<!-- quarantine -->
+<g id="node5" class="node">
+<title>quarantine</title>
+<path fill="#fff2df" stroke="#b5cfc0" d="M206.5,-351.5C206.5,-351.5 67.5,-351.5 67.5,-351.5 61.5,-351.5 55.5,-345.5 55.5,-339.5 55.5,-339.5 55.5,-319.5 55.5,-319.5 55.5,-313.5 61.5,-307.5 67.5,-307.5 67.5,-307.5 206.5,-307.5 206.5,-307.5 212.5,-307.5 218.5,-313.5 218.5,-319.5 218.5,-319.5 218.5,-339.5 218.5,-339.5 218.5,-345.5 212.5,-351.5 206.5,-351.5"/>
+<text text-anchor="middle" x="137" y="-332.9" font-family="Arial" font-size="12.00">Quarantine</text>
+<text text-anchor="middle" x="137" y="-319.9" font-family="Arial" font-size="12.00">Source partition and offset</text>
+</g>
+<!-- worker&#45;&gt;quarantine -->
+<g id="edge4" class="edge">
+<title>worker&#45;&gt;quarantine</title>
+<path fill="none" stroke="#729a84" d="M137,-438.91C137,-417.08 137,-382.87 137,-358.73"/>
+<polygon fill="#729a84" stroke="#729a84" points="139.45,-358.59 137,-351.59 134.55,-358.59 139.45,-358.59"/>
+<text text-anchor="middle" x="163" y="-411" font-family="Arial" font-size="10.00">invalid input</text>
+</g>
+<!-- agents -->
+<g id="node6" class="node">
+<title>agents</title>
+<path fill="white" stroke="#b5cfc0" d="M422,-358C422,-358 270,-358 270,-358 264,-358 258,-352 258,-346 258,-346 258,-313 258,-313 258,-307 264,-301 270,-301 270,-301 422,-301 422,-301 428,-301 434,-307 434,-313 434,-313 434,-346 434,-346 434,-352 428,-358 422,-358"/>
+<text text-anchor="middle" x="346" y="-339.4" font-family="Arial" font-size="12.00">Five LangGraph specialists</text>
+<text text-anchor="middle" x="346" y="-326.4" font-family="Arial" font-size="12.00">Risk · screening · ownership</text>
+<text text-anchor="middle" x="346" y="-313.4" font-family="Arial" font-size="12.00">Evidence · draft</text>
+</g>
+<!-- worker&#45;&gt;agents -->
+<g id="edge9" class="edge">
+<title>worker&#45;&gt;agents</title>
+<path fill="none" stroke="#729a84" d="M169.17,-438.9C185.48,-428.75 205.84,-416.88 225,-408 234.82,-403.45 238.38,-404.96 248,-400 268.32,-389.53 289.21,-375.28 306.45,-362.41"/>
+<polygon fill="#729a84" stroke="#729a84" points="308.04,-364.28 312.15,-358.11 305.09,-360.37 308.04,-364.28"/>
+<text text-anchor="middle" x="249" y="-411" font-family="Arial" font-size="10.00">valid event</text>
+</g>
+<!-- sql -->
+<g id="node7" class="node">
+<title>sql</title>
+<path fill="#dff0e6" stroke="#b5cfc0" d="M437.5,-250C437.5,-250 270.5,-250 270.5,-250 264.5,-250 258.5,-244 258.5,-238 258.5,-238 258.5,-218 258.5,-218 258.5,-212 264.5,-206 270.5,-206 270.5,-206 437.5,-206 437.5,-206 443.5,-206 449.5,-212 449.5,-218 449.5,-218 449.5,-238 449.5,-238 449.5,-244 443.5,-250 437.5,-250"/>
+<text text-anchor="middle" x="354" y="-231.4" font-family="Arial" font-size="12.00">SQL transaction</text>
+<text text-anchor="middle" x="354" y="-218.4" font-family="Arial" font-size="12.00">Input · snapshot · audit · outbox</text>
+</g>
+<!-- agents&#45;&gt;sql -->
+<g id="edge5" class="edge">
+<title>agents&#45;&gt;sql</title>
+<path fill="none" stroke="#729a84" d="M348.23,-300.78C349.31,-287.3 350.62,-271.1 351.71,-257.51"/>
+<polygon fill="#729a84" stroke="#729a84" points="354.17,-257.43 352.29,-250.26 349.29,-257.04 354.17,-257.43"/>
+</g>
+<!-- sql&#45;&gt;kafka -->
+<g id="edge10" class="edge">
+<title>sql&#45;&gt;kafka</title>
+<path fill="none" stroke="#729a84" stroke-dasharray="5,2" d="M397.15,-250.01C416.12,-261.72 436.45,-278.27 447,-299.5 466.87,-339.5 477.49,-367.36 447,-400 438.11,-409.52 342.02,-402.98 330,-408 283.51,-427.42 285.13,-452.54 245,-483 222.85,-499.81 196.83,-516.82 175.55,-530.08"/>
+<polygon fill="#729a84" stroke="#729a84" points="174.06,-528.13 169.4,-533.9 176.64,-532.29 174.06,-528.13"/>
+<text text-anchor="middle" x="371" y="-411" font-family="Arial" font-size="10.00">then commit offset</text>
+</g>
+<!-- review -->
+<g id="node8" class="node">
+<title>review</title>
+<path fill="white" stroke="#b5cfc0" d="M558.5,-155C558.5,-155 385.5,-155 385.5,-155 379.5,-155 373.5,-149 373.5,-143 373.5,-143 373.5,-123 373.5,-123 373.5,-117 379.5,-111 385.5,-111 385.5,-111 558.5,-111 558.5,-111 564.5,-111 570.5,-117 570.5,-123 570.5,-123 570.5,-143 570.5,-143 570.5,-149 564.5,-155 558.5,-155"/>
+<text text-anchor="middle" x="472" y="-136.4" font-family="Arial" font-size="12.00">Authenticated analyst review</text>
+<text text-anchor="middle" x="472" y="-123.4" font-family="Arial" font-size="12.00">Tenant + role + expected version</text>
+</g>
+<!-- sql&#45;&gt;review -->
+<g id="edge6" class="edge">
+<title>sql&#45;&gt;review</title>
+<path fill="none" stroke="#729a84" d="M380.78,-205.9C398.28,-192.1 421.23,-174.01 439.74,-159.42"/>
+<polygon fill="#729a84" stroke="#729a84" points="441.35,-161.28 445.33,-155.02 438.32,-157.43 441.35,-161.28"/>
+<text text-anchor="middle" x="440.5" y="-178" font-family="Arial" font-size="10.00">saved draft</text>
+</g>
+<!-- projection -->
+<g id="node10" class="node">
+<title>projection</title>
+<path fill="white" stroke="#b5cfc0" d="M221,-155C221,-155 81,-155 81,-155 75,-155 69,-149 69,-143 69,-143 69,-123 69,-123 69,-117 75,-111 81,-111 81,-111 221,-111 221,-111 227,-111 233,-117 233,-123 233,-123 233,-143 233,-143 233,-149 227,-155 221,-155"/>
+<text text-anchor="middle" x="151" y="-136.4" font-family="Arial" font-size="12.00">Retryable RDF projection</text>
+<text text-anchor="middle" x="151" y="-123.4" font-family="Arial" font-size="12.00">Deterministic tenant graph</text>
+</g>
+<!-- sql&#45;&gt;projection -->
+<g id="edge11" class="edge">
+<title>sql&#45;&gt;projection</title>
+<path fill="none" stroke="#729a84" d="M293.97,-205.89C278.19,-199.89 261.3,-193.05 246,-186 228.36,-177.87 209.49,-167.84 193.26,-158.76"/>
+<polygon fill="#729a84" stroke="#729a84" points="194.24,-156.5 186.94,-155.2 191.83,-160.77 194.24,-156.5"/>
+<text text-anchor="middle" x="261" y="-178" font-family="Arial" font-size="10.00">outbox</text>
+</g>
+<!-- state -->
+<g id="node9" class="node">
+<title>state</title>
+<path fill="white" stroke="#b5cfc0" d="M424,-60C424,-60 312,-60 312,-60 306,-60 300,-54 300,-48 300,-48 300,-28 300,-28 300,-22 306,-16 312,-16 312,-16 424,-16 424,-16 430,-16 436,-22 436,-28 436,-28 436,-48 436,-48 436,-54 430,-60 424,-60"/>
+<text text-anchor="middle" x="368" y="-41.4" font-family="Arial" font-size="12.00">Versioned decision</text>
+<text text-anchor="middle" x="368" y="-28.4" font-family="Arial" font-size="12.00">Chained audit record</text>
+</g>
+<!-- review&#45;&gt;state -->
+<g id="edge7" class="edge">
+<title>review&#45;&gt;state</title>
+<path fill="none" stroke="#729a84" d="M448.4,-110.9C433.11,-97.22 413.09,-79.32 396.85,-64.8"/>
+<polygon fill="#729a84" stroke="#729a84" points="398.36,-62.86 391.51,-60.02 395.09,-66.51 398.36,-62.86"/>
+<text text-anchor="middle" x="464.5" y="-83" font-family="Arial" font-size="10.00">compare and swap</text>
+</g>
+<!-- state&#45;&gt;sql -->
+<g id="edge8" class="edge">
+<title>state&#45;&gt;sql</title>
+<path fill="none" stroke="#729a84" d="M337.38,-60.23C321.82,-72.94 304.46,-90.58 296,-111 288.52,-129.07 289.5,-136.56 296,-155 302.03,-172.09 314.01,-188.1 325.53,-200.67"/>
+<polygon fill="#729a84" stroke="#729a84" points="323.83,-202.44 330.42,-205.84 327.39,-199.07 323.83,-202.44"/>
+<text text-anchor="middle" x="328.5" y="-130.5" font-family="Arial" font-size="10.00">atomic commit</text>
+</g>
+<!-- neptune -->
+<g id="node11" class="node">
+<title>neptune</title>
+<path fill="white" stroke="#b5cfc0" d="M227.5,-60C227.5,-60 74.5,-60 74.5,-60 68.5,-60 62.5,-54 62.5,-48 62.5,-48 62.5,-28 62.5,-28 62.5,-22 68.5,-16 74.5,-16 74.5,-16 227.5,-16 227.5,-16 233.5,-16 239.5,-22 239.5,-28 239.5,-28 239.5,-48 239.5,-48 239.5,-54 233.5,-60 227.5,-60"/>
+<text text-anchor="middle" x="151" y="-41.4" font-family="Arial" font-size="12.00">Neptune adapter / local RDF</text>
+<text text-anchor="middle" x="151" y="-28.4" font-family="Arial" font-size="12.00">SigV4 request or atomic file</text>
+</g>
+<!-- projection&#45;&gt;neptune -->
+<g id="edge12" class="edge">
+<title>projection&#45;&gt;neptune</title>
+<path fill="none" stroke="#729a84" d="M151,-110.9C151,-97.94 151,-81.18 151,-67.1"/>
+<polygon fill="#729a84" stroke="#729a84" points="153.45,-67.02 151,-60.02 148.55,-67.02 153.45,-67.02"/>
+</g>
+<!-- dataset -->
+<g id="node12" class="node">
+<title>dataset</title>
+<path fill="white" stroke="#b5cfc0" d="M569.5,-948C569.5,-948 430.5,-948 430.5,-948 424.5,-948 418.5,-942 418.5,-936 418.5,-936 418.5,-916 418.5,-916 418.5,-910 424.5,-904 430.5,-904 430.5,-904 569.5,-904 569.5,-904 575.5,-904 581.5,-910 581.5,-916 581.5,-916 581.5,-936 581.5,-936 581.5,-942 575.5,-948 569.5,-948"/>
+<text text-anchor="middle" x="500" y="-929.4" font-family="Arial" font-size="12.00">IBM AMLworld HI&#45;Small</text>
+<text text-anchor="middle" x="500" y="-916.4" font-family="Arial" font-size="12.00">Checksum&#45;verified source</text>
+</g>
+<!-- prepare -->
+<g id="node13" class="node">
+<title>prepare</title>
+<path fill="white" stroke="#b5cfc0" d="M589.5,-863C589.5,-863 410.5,-863 410.5,-863 404.5,-863 398.5,-857 398.5,-851 398.5,-851 398.5,-831 398.5,-831 398.5,-825 404.5,-819 410.5,-819 410.5,-819 589.5,-819 589.5,-819 595.5,-819 601.5,-825 601.5,-831 601.5,-831 601.5,-851 601.5,-851 601.5,-857 595.5,-863 589.5,-863"/>
+<text text-anchor="middle" x="500" y="-844.4" font-family="Arial" font-size="12.00">Label&#45;blind 5% sample</text>
+<text text-anchor="middle" x="500" y="-831.4" font-family="Arial" font-size="12.00">Frozen temporal graph snapshots</text>
+</g>
+<!-- dataset&#45;&gt;prepare -->
+<g id="edge13" class="edge">
+<title>dataset&#45;&gt;prepare</title>
+<path fill="none" stroke="#729a84" d="M500,-903.63C500,-893.48 500,-881.21 500,-870.31"/>
+<polygon fill="#729a84" stroke="#729a84" points="502.45,-870.01 500,-863.01 497.55,-870.01 502.45,-870.01"/>
+</g>
+<!-- train -->
+<g id="node14" class="node">
+<title>train</title>
+<path fill="white" stroke="#b5cfc0" d="M601.5,-748C601.5,-748 398.5,-748 398.5,-748 392.5,-748 386.5,-742 386.5,-736 386.5,-736 386.5,-716 386.5,-716 386.5,-710 392.5,-704 398.5,-704 398.5,-704 601.5,-704 601.5,-704 607.5,-704 613.5,-710 613.5,-716 613.5,-716 613.5,-736 613.5,-736 613.5,-742 607.5,-748 601.5,-748"/>
+<text text-anchor="middle" x="500" y="-729.4" font-family="Arial" font-size="12.00">Directed GraphSAGE</text>
+<text text-anchor="middle" x="500" y="-716.4" font-family="Arial" font-size="12.00">Logistic regression · gradient boosting</text>
+</g>
+<!-- prepare&#45;&gt;train -->
+<g id="edge14" class="edge">
+<title>prepare&#45;&gt;train</title>
+<path fill="none" stroke="#729a84" d="M500,-818.75C500,-800.83 500,-775.05 500,-755.37"/>
+<polygon fill="#729a84" stroke="#729a84" points="502.45,-755.16 500,-748.16 497.55,-755.16 502.45,-755.16"/>
+</g>
+<!-- evaluate -->
+<g id="node15" class="node">
+<title>evaluate</title>
+<path fill="white" stroke="#b5cfc0" d="M599,-663C599,-663 401,-663 401,-663 395,-663 389,-657 389,-651 389,-651 389,-631 389,-631 389,-625 395,-619 401,-619 401,-619 599,-619 599,-619 605,-619 611,-625 611,-631 611,-631 611,-651 611,-651 611,-657 605,-663 599,-663"/>
+<text text-anchor="middle" x="500" y="-644.4" font-family="Arial" font-size="12.00">Validation selection + held&#45;out test</text>
+<text text-anchor="middle" x="500" y="-631.4" font-family="Arial" font-size="12.00">Average precision and review budget</text>
+</g>
+<!-- train&#45;&gt;evaluate -->
+<g id="edge15" class="edge">
+<title>train&#45;&gt;evaluate</title>
+<path fill="none" stroke="#729a84" d="M500,-703.63C500,-693.48 500,-681.21 500,-670.31"/>
+<polygon fill="#729a84" stroke="#729a84" points="502.45,-670.01 500,-663.01 497.55,-670.01 502.45,-670.01"/>
+</g>
+<!-- artifacts -->
+<g id="node16" class="node">
+<title>artifacts</title>
+<path fill="#e4eef6" stroke="#b5cfc0" d="M607.5,-578C607.5,-578 392.5,-578 392.5,-578 386.5,-578 380.5,-572 380.5,-566 380.5,-566 380.5,-546 380.5,-546 380.5,-540 386.5,-534 392.5,-534 392.5,-534 607.5,-534 607.5,-534 613.5,-534 619.5,-540 619.5,-546 619.5,-546 619.5,-566 619.5,-566 619.5,-572 613.5,-578 607.5,-578"/>
+<text text-anchor="middle" x="500" y="-559.4" font-family="Arial" font-size="12.00">JSON weights and reference predictions</text>
+<text text-anchor="middle" x="500" y="-546.4" font-family="Arial" font-size="12.00">Dataset manifest and metrics</text>
+</g>
+<!-- evaluate&#45;&gt;artifacts -->
+<g id="edge16" class="edge">
+<title>evaluate&#45;&gt;artifacts</title>
+<path fill="none" stroke="#729a84" d="M500,-618.63C500,-608.48 500,-596.21 500,-585.31"/>
+<polygon fill="#729a84" stroke="#729a84" points="502.45,-585.01 500,-578.01 497.55,-585.01 502.45,-585.01"/>
+</g>
+<!-- ui -->
+<g id="node17" class="node">
+<title>ui</title>
+<path fill="#dcece3" stroke="#b5cfc0" d="M634,-483C634,-483 366,-483 366,-483 360,-483 354,-477 354,-471 354,-471 354,-451 354,-451 354,-445 360,-439 366,-439 366,-439 634,-439 634,-439 640,-439 646,-445 646,-451 646,-451 646,-471 646,-471 646,-477 640,-483 634,-483"/>
+<text text-anchor="middle" x="500" y="-464.4" font-family="Arial" font-size="12.00">Vercel workbench + FastAPI</text>
+<text text-anchor="middle" x="500" y="-451.4" font-family="Arial" font-size="12.00">Investigations · model lab · private service controls</text>
+</g>
+<!-- artifacts&#45;&gt;ui -->
+<g id="edge18" class="edge">
+<title>artifacts&#45;&gt;ui</title>
+<path fill="none" stroke="#729a84" d="M500,-533.9C500,-520.94 500,-504.18 500,-490.1"/>
+<polygon fill="#729a84" stroke="#729a84" points="502.45,-490.02 500,-483.02 497.55,-490.02 502.45,-490.02"/>
+<text text-anchor="middle" x="557.5" y="-506" font-family="Arial" font-size="10.00">live exported model heads</text>
+</g>
+<!-- ui&#45;&gt;agents -->
+<g id="edge17" class="edge">
+<title>ui&#45;&gt;agents</title>
+<path fill="none" stroke="#729a84" d="M460.47,-438.99C450.5,-433.03 440.06,-426.19 431,-419 410.28,-402.56 389.67,-381.25 373.93,-363.66"/>
+<polygon fill="#729a84" stroke="#729a84" points="375.68,-361.94 369.21,-358.33 372.01,-365.19 375.68,-361.94"/>
+<text text-anchor="middle" x="467.5" y="-411" font-family="Arial" font-size="10.00">fixed demo case</text>
+</g>
+<!-- ui&#45;&gt;review -->
+<g id="edge19" class="edge">
+<title>ui&#45;&gt;review</title>
+<path fill="none" stroke="#729a84" d="M504.16,-438.79C505.56,-429.38 506.63,-418.16 506,-408 500.43,-317.9 484.65,-212.07 476.7,-162.43"/>
+<polygon fill="#729a84" stroke="#729a84" points="479.08,-161.75 475.54,-155.23 474.24,-162.53 479.08,-161.75"/>
+<text text-anchor="middle" x="539.5" y="-273" font-family="Arial" font-size="10.00">OIDC private service</text>
+</g>
+</g>
+</svg>
+</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+<th>Executable entry point</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Candidate builder</td>
+<td>Validate a canonical ledger snapshot, apply event-time bounds, build rule-triggered cases</td>
+<td><code>python -m pipeline.candidates</code></td>
+</tr>
+<tr>
+<td>Publisher</td>
+<td>Publish versioned case events with an idempotent Kafka producer</td>
+<td><code>python -m pipeline.cli publish</code></td>
+</tr>
+<tr>
+<td>Intake worker</td>
+<td>Consume events, validate contracts, run the investigation, commit SQL, acknowledge Kafka</td>
+<td><code>python -m pipeline.worker</code></td>
+</tr>
+<tr>
+<td>Semantic engine</td>
+<td>Map records to RDF, validate shapes, retrieve direct ownership context</td>
+<td><code>api/core.py</code></td>
+</tr>
+<tr>
+<td>Investigation workflow</td>
+<td>Graph risk, screening availability, ownership, evidence, drafting, review gate</td>
+<td><code>api/core.py</code></td>
+</tr>
+<tr>
+<td>SQL ledger</td>
+<td>Event deduplication, cases, review requests, audit chain, projection outbox, quarantine</td>
+<td><code>pipeline/store.py</code></td>
+</tr>
+<tr>
+<td>Graph projection</td>
+<td>Write a case graph into a deterministic tenant-specific graph</td>
+<td><code>pipeline/neptune.py</code></td>
+</tr>
+<tr>
+<td>Private API</td>
+<td>OIDC authentication, roles, tenant scoping, versioned review</td>
+<td><code>api/index.py</code></td>
+</tr>
+<tr>
+<td>Model pipeline</td>
+<td>Dataset preparation, temporal snapshots, training, evaluation, JSON exports</td>
+<td><code>ml/prepare.py</code>, <code>ml/train.py</code></td>
+</tr>
+<tr>
+<td>Workbench</td>
+<td>Investigation view, model comparison, inference, authenticated service controls</td>
+<td><code>index.html</code>, <code>app.js</code></td>
+</tr>
+</tbody>
+</table>
+<p>The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Integrating a continuously refreshed bank feature store and trained score into the investigation policy is a subsequent institutional deployment decision.</p>
+<h2 id="3-source-contracts-and-candidate-generation">3. Source contracts and candidate generation</h2>
+<p>A ledger connector supplies resolved account identifiers, account holders, transaction amounts, currency, timestamps with timezones, and source record IDs. Direct ownership assertions additionally require their percentage, source reference, and observation time. Decimal monetary values retain their precision during ingestion and RDF construction.</p>
+<p><code>InvestigationCase</code> rejects duplicate account or transaction identifiers, missing referenced accounts, future-dated transactions relative to the cutoff, missing source IDs, invalid monetary values, and ownership observations from after the cutoff. The current bounded contract accepts up to 500 accounts and 1,000 transactions. HTTP bodies are limited to 2 MB by counting streamed bytes.</p>
+<p>The candidate builder applies a configurable lookback of 1 to 168 hours. Its default is 24 hours. It detects fan-out and chronological three-account cycles, preserves one-hop context around the triggering records, and constructs deterministic event IDs. The current cycle policy emits the first qualifying cycle within a bounded snapshot. Large-scale transaction monitoring needs partitioning and a candidate-recall study before adopting this detector.</p>
+<p>Each case event carries a schema version, tenant ID, immutable event ID, received-at timestamp, and case payload. The Kafka key combines tenant and case identity. Canonical bank adapters, identity resolution, and cross-bank data-sharing arrangements remain specific to the source institution.</p>
+<h2 id="4-ontology-and-graph-integrity">4. Ontology and graph integrity</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Representation</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Account holder</td>
+<td><code>Account → heldBy → Party</code></td>
+<td>Resolved source account ownership</td>
+</tr>
+<tr>
+<td>Transfer</td>
+<td><code>Transaction → sender / receiver → Account</code></td>
+<td>A distinct payment event with decimal amount and timestamp</td>
+</tr>
+<tr>
+<td>Ownership assertion</td>
+<td>Owner, owned entity, percentage, supported-by evidence</td>
+<td>A source assertion requiring date and provenance</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>Source identifier and observation timestamp</td>
+<td>The record supporting an assertion</td>
+</tr>
+<tr>
+<td>Risk signal</td>
+<td>Rule output with transaction references</td>
+<td>A reason to investigate</td>
+</tr>
+<tr>
+<td>Investigation</td>
+<td>Frozen input, output, version, review state</td>
+<td>The unit of analyst work</td>
+</tr>
+</tbody>
+</table>
+<p>RDF identifiers preserve source relationships. OWL supplies the vocabulary and class semantics. SHACL verifies required properties and datatypes. SPARQL retrieves direct ownership records. The current implementation runs RDFS closure for validation. Full OWL DL reasoning and legal beneficial-owner determination require further components and rules. <a href="https://www.w3.org/TR/owl2-overview/">W3C OWL 2</a>, <a href="https://www.w3.org/TR/shacl/">SHACL</a>, <a href="https://www.w3.org/TR/sparql11-query/">SPARQL</a></p>
+<p>FIBO provides a relevant financial vocabulary for a future mapping. FinGraph uses its own compact namespace so the actual scope can be inspected. Any FIBO mapping should have competency questions, versioned alignments, and reviewed equivalence statements. PROV-O supplies a standard foundation for richer entity, activity, and agent provenance. <a href="https://edmcouncil.org/frameworks/industry-models/fibo/">FIBO</a>, <a href="https://www.w3.org/TR/prov-o/">PROV-O</a></p>
+<p>Indirect ownership needs more than multiplying percentages along arbitrary paths. Cross-holdings, multiple valid paths, share classes, changing control rights, and effective dates can change the interpretation. The executable scope retrieves direct source assertions. Missing assertions become explicit gaps. FATF guidance motivates reliable beneficial-ownership information, while local legal interpretation remains institution-specific. <a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-Beneficial-Ownership-Legal-Persons.html">FATF beneficial-ownership guidance</a></p>
+<h2 id="5-five-specialist-contracts">5. Five specialist contracts</h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Failure or uncertainty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Graph risk</td>
+<td>Valid bounded transaction graph</td>
+<td>Fan-out and chronological same-currency cycle signals</td>
+<td>A pattern requires economic context</td>
+</tr>
+<tr>
+<td>Screening</td>
+<td>Screening fixture status</td>
+<td>Availability and freshness information</td>
+<td>Live sanctions screening remains unconnected</td>
+</tr>
+<tr>
+<td>Ownership</td>
+<td>Typed account-holder graph</td>
+<td>Direct assertions, shared-owner context, missing ownership</td>
+<td>Source gaps stay visible</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>Transactions and retrieved assertions</td>
+<td>Referenced source register</td>
+<td>Unresolved references prevent a valid draft</td>
+</tr>
+<tr>
+<td>Drafting</td>
+<td>Signals, evidence, source gaps</td>
+<td>Deterministic narrative and investigation questions</td>
+<td>Analyst review remains required</td>
+</tr>
+</tbody>
+</table>
+<p>The stages are deterministic LangGraph nodes. They have bounded inputs and explicit result contracts. A generative model would add a separate evaluation burden for unsupported claims, prompt injection, and source entailment. The current narrative comes from templates and validated source references. ReAct and RAG inform the research comparison but are research references for this version.</p>
+<p>The graph-risk implementation groups transfers by sender and indexes possible cycle-closing edges by sender, receiver, and currency. Binary search enforces strict transaction chronology. Amounts in different currencies are not summed. Self-transfers cannot form a three-account cycle. Legitimate treasury, payroll, and aggregator behavior can resemble the configured patterns, so the draft preserves the need for contextual review.</p>
+<h2 id="6-durability-and-concurrency">6. Durability and concurrency</h2>
+<p>The SQL ledger uses six tables. <code>intake_events</code> records canonical payloads and their SHA-256 fingerprints. <code>investigations</code> stores the completed workflow snapshot and current review version. <code>review_requests</code> records idempotent review responses. <code>audit_events</code> stores a chained sequence of changes. <code>outbox</code> holds graph projections awaiting publication. <code>quarantine</code> retains malformed source events with their Kafka coordinates.</p>
+<p>Event insertion, case creation, the first audit record, and the graph outbox entry share one SQL transaction. Repeating an event ID with identical content returns its existing case. Reusing that ID with different content yields a conflict. A database failure rolls back the entire transaction.</p>
+<p>A review includes an expected version and request ID. The reviewer identity comes from the verified token. The SQL update checks both the prior version and the awaiting-review status. Concurrent requests produce one committed winner. An exact retry returns the already recorded response. Changed content under an old request ID produces a conflict.</p>
+<p>The immutable pre-review LangGraph state is stored in the SQL case. After a process restart, the service reconstructs the review checkpoint from that snapshot, reaches the interrupt, and resumes with the authenticated decision. The SQL transaction owns the final review commit. Intermediate specialist steps are pure and may be recomputed before a completed snapshot is saved. This recovery model avoids external side effects inside the workflow stages. <a href="https://docs.langchain.com/oss/python/langgraph/persistence">LangGraph persistence</a></p>
+<p>Audit records contain the preceding hash, case ID, version, actor, action, time, and rationale. A trusted external anchor or immutable archival destination is required to detect a privileged rewrite of the entire chain. The hash chain currently supports consistency checks within the application ledger.</p>
+<h2 id="7-kafka-and-the-transactional-outbox">7. Kafka and the transactional outbox</h2>
+<p>The consumer disables automatic commits and automatic offset storage. It commits an offset only after a case has been committed or the malformed record has been durably quarantined. Database failures leave the offset uncommitted. Replaying the event is safe because SQL enforces identity and payload consistency. <a href="https://docs.confluent.io/kafka-clients/python/current/overview.html">Confluent Python client</a></p>
+<p>Kafka and PostgreSQL do not share a transaction. The implementation therefore uses at-least-once delivery with idempotent persistence. A crash after SQL commit and before offset commit causes a replay. A crash after graph publication and before the outbox is marked complete causes repeated graph insertion. The graph URI and triples are deterministic, so set insertion produces the same graph content.</p>
+<p>Projection failures leave a pending outbox entry with its attempt count and error type. The worker retries pending entries while polling. The current worker is a single straightforward consumer loop. A production deployment should separate projection workers when slow external calls compete with ingestion, implement retry backoff and dead-letter escalation, and monitor consumer lag and oldest pending projection age.</p>
+<p>The Docker Compose stack is a local integration environment with one Kafka broker and one PostgreSQL instance. Production replication, backup, disaster recovery, topic ACLs, TLS, authentication, and capacity sizing depend on the target environment. Source producers must be trusted and authorized to publish each tenant's records.</p>
+<h2 id="8-neptune-projection">8. Neptune projection</h2>
+<p>The adapter signs requests with AWS Signature Version 4 for the <code>neptune-db</code> service. It refreshes credentials through the AWS SDK provider chain. RDFLib serializes the triples, and hashed tenant and run identifiers construct the graph URI. User text is never interpolated into SPARQL syntax. The client uses an HTTPS endpoint, request timeouts, and disabled redirects. <a href="https://docs.aws.amazon.com/neptune/latest/userguide/iam-auth-connecting.html">AWS IAM authentication</a></p>
+<p>Every case occupies a dedicated named graph. Queries in an institutional deployment must explicitly scope the graph and tenant. Neptune queries without graph scoping can consider the union of named graphs. The current investigation reads its validated in-memory case graph and asynchronously exports an archival RDF projection. Neptune-backed interactive retrieval requires integration testing against the actual VPC and IAM policy. <a href="https://docs.aws.amazon.com/neptune/latest/userguide/best-practices-sparql-query.html">Neptune named graphs</a></p>
+<p>Local mode writes an atomic N-Triples file for each case. Adapter tests inspect the SigV4 request and graph scope. Live AWS provisioning and connectivity are outside the current verification record.</p>
+<h2 id="9-authentication-and-api-boundaries">9. Authentication and API boundaries</h2>
+<p>Public routes accept only five configured investigation IDs and a fixed set of benchmark example IDs. Custom case content enters through <code>/api/v1/events</code>, which requires an OIDC token. The issuer, audience, JWKS endpoint, signature algorithm, expiry, issue time, subject, and tenant claims are validated. Roles are explicit lists containing <code>ingest</code>, <code>analyst</code>, or <code>reviewer</code> as applicable.</p>
+<p>All read and review operations scope data using the tenant from the verified token. An ingestion tenant mismatch returns 403. Access to another tenant's case returns 404. The reviewer identity is never accepted from a form field. Tokens are kept in the browser session and are excluded from application logs.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Access</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/health</code></td>
+<td>Public</td>
+<td>Runtime and integration status</td>
+</tr>
+<tr>
+<td><code>GET /api/cases</code></td>
+<td>Public</td>
+<td>Authored synthetic investigation cases</td>
+</tr>
+<tr>
+<td><code>POST /api/investigate</code></td>
+<td>Public fixed ID</td>
+<td>Execute an investigation demonstration</td>
+</tr>
+<tr>
+<td><code>GET /api/model/evaluation</code></td>
+<td>Public</td>
+<td>Dataset and measured model metrics</td>
+</tr>
+<tr>
+<td><code>POST /api/model/score</code></td>
+<td>Public fixed ID</td>
+<td>Compute scores for a held-out example</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/events</code></td>
+<td>Ingest role</td>
+<td>Commit a validated investigation</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/investigations/{id}</code></td>
+<td>Analyst role</td>
+<td>Read a tenant-scoped saved case</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/investigations/{id}/reviews</code></td>
+<td>Reviewer role</td>
+<td>Record a versioned decision</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/investigations/{id}/audit</code></td>
+<td>Analyst role</td>
+<td>Inspect the recorded review history</td>
+</tr>
+</tbody>
+</table>
+<p>Private routes fail closed when authentication or database configuration is absent. Static file serving uses an allowlist. The Vercel configuration adds content-type, referrer, and content-security headers. Per-user rate limiting, enterprise identity integration, field redaction, key rotation procedures, retention enforcement, and a penetration test remain deployment work.</p>
+<h2 id="10-data-provenance-and-sampling">10. Data provenance and sampling</h2>
+<p>The model source is IBM AMLworld HI-Small, retrieved from the official Kaggle dataset endpoint linked by IBM. The source contains 5,078,345 transactions, including 5,177 synthetic laundering labels. Its SHA-256 is <code>b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040</code>. The importer rejects a different checksum or schema. <a href="https://github.com/IBM/AML-Data">IBM dataset repository</a></p>
+<p>A Bernoulli sample selects 5% of rows using seed 42 before using labels. It contains 253,980 transactions and 267 positive labels. This selection preserves an approximate natural class imbalance but removes transaction neighbors and can break motifs. Graph results therefore describe the sampled graph. The preparation command accepts a larger fraction for further experiments. The complete source CSV is excluded from the repository.</p>
+<p>Account identifiers combine bank ID and account number. This avoids merging distinct accounts with identical local account numbers. The duplicate <code>Account</code> CSV headings are validated explicitly. Currency and payment-format vocabularies are fitted from the training period, and unseen values have an unknown category. Source timestamps lack an explicit zone, so benchmark ordering treats them as UTC.</p>
+<p>IBM publishes the dataset under CDLA-Sharing-1.0, separately from the repository's software license. The exported inference examples contain a small derivative subset and retain the source attribution and sharing license. <a href="https://github.com/IBM/AML-Data/blob/main/README.md">Dataset license information</a></p>
+<h2 id="11-temporal-model-experiment">11. Temporal model experiment</h2>
+<table>
+<thead>
+<tr>
+<th>Partition</th>
+<th>Transaction time</th>
+<th>Graph visible to the model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Warmup</td>
+<td>Before 4 September 2022</td>
+<td>Initial history only</td>
+</tr>
+<tr>
+<td>Training</td>
+<td>4 to 7 September inclusive</td>
+<td>History before 4 September</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>8 September</td>
+<td>History before 8 September</td>
+</tr>
+<tr>
+<td>Test</td>
+<td>9 September onward</td>
+<td>History before 9 September</td>
+</tr>
+</tbody>
+</table>
+<p>Equal-timestamp transactions stay together. A target-period edge is absent from that partition's graph. Validation and test features use prior transactions without their labels. The node universe is an indexing structure without learned ID embeddings. Unseen accounts have zero historical features. Standardization is fitted using training edges only.</p>
+<p>The GraphSAGE comparator has two directed message-passing layers with separate incoming and outgoing aggregation and 16-dimensional hidden states. Initial node features describe historical incoming and outgoing counts and their availability. The edge head receives sender and receiver embeddings plus transaction features. Currency indicators accompany the log amount. A same-currency amount difference is computed only when the currency matches.</p>
+<p>Training uses Adam with learning rate 0.003, weight decay 0.0001, gradient clipping at 5, and weighted binary cross-entropy. The positive weight is the square root of the negative-to-positive training ratio. Twenty epochs are evaluated on validation average precision. Epoch 12 is selected. The training set contains 82,989 transactions and 110 positives. The sampled node index contains 201,405 accounts.</p>
+<p>Logistic regression and histogram gradient boosting receive the same transaction features plus historical sender and receiver degree features. Logistic regression uses balanced class weights. Gradient boosting uses 100 iterations, 15 maximum leaf nodes, learning rate 0.08, and L2 regularization of 1. Its internal random validation split is disabled. Each model's decision threshold is selected on validation F1. Held-out metrics are calculated afterward.</p>
+<p>The JSON artifacts include model weights, thresholds, feature names, scaler values, dataset hashes, split boundaries, software versions, and measured metrics. The server computes logistic, tree, and GNN edge-head scores without loading pickle files. Tests compare the exported predictions with training-runtime reference predictions.</p>
+<h2 id="12-measured-results">12. Measured results</h2>
+<p>The test partition contains 43,126 transactions, with 74 positives and a prevalence of 0.1716%. Values below come from the checked-in <code>artifacts/evaluation.json</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Average precision</th>
+<th>ROC AUC</th>
+<th>Precision in top 1%</th>
+<th>Recall in top 1%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Directed GraphSAGE</td>
+<td>0.0117</td>
+<td>0.8466</td>
+<td>0.46%</td>
+<td>2.70%</td>
+</tr>
+<tr>
+<td>Logistic regression</td>
+<td>0.0179</td>
+<td>0.9407</td>
+<td>1.16%</td>
+<td>6.76%</td>
+</tr>
+<tr>
+<td>Histogram gradient boosting</td>
+<td>0.0900</td>
+<td>0.9608</td>
+<td>6.71%</td>
+<td>39.19%</td>
+</tr>
+</tbody>
+</table>
+<p>Gradient boosting leads on validation average precision and on the recorded test comparison. The GNN underperforms both tabular baselines on test average precision. This result supports improving graph coverage, causal features, and evaluation before adding architectural complexity. The model scores remain uncalibrated. Brier scores and the validation-selected thresholds are available in the machine-readable report.</p>
+<p>The result has substantial limits. It covers one sample, one seed, a small number of positives, and a single synthetic source. Confidence intervals, independent temporal windows, unsampled history, model calibration, cross-bank transfer, and operational analyst outcomes remain unmeasured. A high ROC AUC can coexist with a low proportion of relevant alerts under this class imbalance, so the UI reports review-budget precision and recall alongside it.</p>
+<p>The inference cards deliberately include high-score examples, positive-label examples, and evenly spaced test examples. They illustrate behavior. Dataset-wide evaluation uses every row in the held-out partition. GNN embeddings on those cards were computed before the test cutoff, and the edge head runs on each API request.</p>
+<h2 id="13-failure-behavior">13. Failure behavior</h2>
+<table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>Implemented response</th>
+<th>Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exact Kafka redelivery</td>
+<td>Return existing committed case</td>
+<td>Idempotency and integration checks</td>
+</tr>
+<tr>
+<td>Changed payload under reused ID</td>
+<td>Conflict</td>
+<td>Regression test</td>
+</tr>
+<tr>
+<td>Invalid account reference or time</td>
+<td>Reject contract before workflow</td>
+<td>Contract tests</td>
+</tr>
+<tr>
+<td>Malformed Kafka event</td>
+<td>Persist quarantine before offset acknowledgement</td>
+<td>Worker boundary test</td>
+</tr>
+<tr>
+<td>Database commit failure</td>
+<td>Roll back event, case, audit, and outbox</td>
+<td>Fault-injection test</td>
+</tr>
+<tr>
+<td>Graph publication failure</td>
+<td>Preserve pending projection for retry</td>
+<td>Fault-injection test</td>
+</tr>
+<tr>
+<td>Worker restart after SQL commit</td>
+<td>Replay safely through event identity</td>
+<td>Stack smoke test</td>
+</tr>
+<tr>
+<td>Competing reviewer requests</td>
+<td>One version update wins</td>
+<td>Concurrent test</td>
+</tr>
+<tr>
+<td>Review retry</td>
+<td>Return saved response for identical request</td>
+<td>Idempotency test</td>
+</tr>
+<tr>
+<td>Expired or wrong-issuer JWT</td>
+<td>Reject before business operation</td>
+<td>Signed-token test</td>
+</tr>
+<tr>
+<td>Other tenant requests a case</td>
+<td>Return 404</td>
+<td>HTTP test</td>
+</tr>
+<tr>
+<td>Model export changes numerics</td>
+<td>Fail prediction-parity test</td>
+<td>Inference artifact test</td>
+</tr>
+<tr>
+<td>Live screening unavailable</td>
+<td>Keep an explicit gap in the draft</td>
+<td>Existing investigation test</td>
+</tr>
+</tbody>
+</table>
+<h2 id="14-deployment-and-ci">14. Deployment and CI</h2>
+<p>The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. The public workbench is useful without cloud database credentials. Connecting its Pipeline tab to the private API requires the service configuration described in the README. <a href="https://vercel.com/docs/frameworks/backend/fastapi">FastAPI on Vercel</a></p>
+<p>The <code>CI</code> workflow runs linting, formatting checks, regression tests, and JavaScript syntax validation. A separate job starts PostgreSQL, Kafka, the API, and the worker in Docker Compose, publishes five events, verifies persisted cases and graph files, records an idempotent review, restarts the worker, and replays the events.</p>
+<p>The benchmark workflow downloads the checksum-verified source, prepares the sample, trains all three models, and uploads the JSON artifacts. It runs on manual dispatch so ordinary code pushes avoid repeated dataset downloads. The deployment workflow reruns verification before using configured Vercel credentials. Its required GitHub secret and variables are documented explicitly. The current deployment can also be published through the connected Vercel account.</p>
+<h2 id="15-operational-acceptance-before-bank-use">15. Operational acceptance before bank use</h2>
+<p>A bank deployment needs a named owner for source contracts, identity resolution, data retention, screening policy, model validation, incident response, and reviewer authorization. The workflow should be exercised against approved data with the actual tenant and identity configuration. Production targets for throughput, latency, recovery time, recovery point, and alert capacity need to be established with workload measurements.</p>
+<p>Review objectives should include missing-evidence recall, false-positive workload, model drift by customer cohort and payment type, stale ownership and screening data, rejected-schema rate, Kafka lag, outbox delay, review conflicts, and audit completeness. Benchmark accuracy alone cannot establish operational suitability.</p>
+<p>The most material extensions are full-history graph features, independent temporal evaluation, a live screening adapter with source-freshness controls, institution-approved ownership logic, persistent document evidence, and measured analyst evaluation. Those extensions should have explicit acceptance tests and a deployment-specific threat model.</p>
+<h2 id="16-research-register">16. Research register</h2>
+<p>The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.</p>
+<h3 id="p01-elliptic-anti-money-laundering-in-bitcoin-2019">P01 · Elliptic: Anti-Money Laundering in Bitcoin (2019)</h3>
+<p>Compares tabular and graph classifiers on a Bitcoin transaction graph; Random Forest was strongest in the reported comparison. Benchmark simple supervised models before introducing GNN complexity.</p>
+<p>The main limitation is that crypto transaction labels do not validate bank-account or beneficial-owner decisions.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1908.02591">Primary source</a></p>
+<h3 id="p02-realistic-synthetic-financial-transactions-for-anti-money-laundering-models-2023">P02 · Realistic Synthetic Financial Transactions for Anti-Money Laundering Models (2023)</h3>
+<p>Introduces a synthetic transaction generator and public AML benchmarks. Use synthetic bank-like transaction data for controlled experiments and typology coverage.</p>
+<p>The main limitation is that synthetic labels reflect simulator assumptions; performance does not establish operational efficacy.</p>
+<p>Reviewed at the level of methods and experiments sections. <a href="https://arxiv.org/abs/2306.16424">Primary source</a></p>
+<h3 id="p03-the-shape-of-money-laundering-elliptic2-2024">P03 · The Shape of Money Laundering: Elliptic2 (2024)</h3>
+<p>Frames suspicious activity as classification of connected subgraphs rather than isolated nodes. Evaluate case-level subgraphs alongside transaction-level predictions.</p>
+<p>The main limitation is that requires candidate generation and substantial graph infrastructure; crypto evidence is not banking validation.</p>
+<p>Reviewed at the level of methods and experiments sections. <a href="https://arxiv.org/abs/2404.19109">Primary source</a></p>
+<h3 id="p04-a-synthetic-data-set-to-benchmark-anti-money-laundering-methods-2023">P04 · A synthetic data set to benchmark anti-money laundering methods (2023)</h3>
+<p>Presents synthetic AML data for comparing statistical and machine learning approaches. Add an independent synthetic benchmark instead of relying on one generator.</p>
+<p>The main limitation is that inspect the actual schema and labels before selecting graph or ownership tasks.</p>
+<p>Reviewed at the level of methods and experiments sections. <a href="https://www.nature.com/articles/s41597-023-02569-2">Primary source</a></p>
+<h3 id="p05-inductive-representation-learning-on-large-graphs-2017">P05 · Inductive Representation Learning on Large Graphs (2017)</h3>
+<p>Learns neighborhood aggregation functions that generalize to unseen nodes. Consider sampled inductive models for newly opened accounts.</p>
+<p>The main limitation is that inductive capacity does not solve temporal leakage or missing customer context.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1706.02216">Primary source</a></p>
+<h3 id="p06-modeling-relational-data-with-graph-convolutional-networks-2017">P06 · Modeling Relational Data with Graph Convolutional Networks (2017)</h3>
+<p>Uses relation-specific message passing for multi-relational graphs. Preserve transaction, ownership, and identity edge types in experimental models.</p>
+<p>The main limitation is that knowledge-base completion scores cannot be treated as verified registry facts.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1703.06103">Primary source</a></p>
+<h3 id="p07-graph-attention-networks-2017">P07 · Graph Attention Networks (2017)</h3>
+<p>Uses masked attention to learn different weights over neighbors. Include a weighted-neighbor model in a bounded experimental comparison.</p>
+<p>The main limitation is that attention weights are not proof of causality or a complete explanation.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1710.10903">Primary source</a></p>
+<h3 id="p08-evolvegcn-evolving-graph-convolutional-networks-for-dynamic-graphs-2019">P08 · EvolveGCN: Evolving Graph Convolutional Networks for Dynamic Graphs (2019)</h3>
+<p>Evolves graph convolution parameters across changing graph snapshots. Test snapshot-based modeling if graph structure shifts over time.</p>
+<p>The main limitation is that snapshot resolution can hide transaction ordering and rapid pass-through behavior.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1902.10191">Primary source</a></p>
+<h3 id="p09-temporal-graph-networks-for-deep-learning-on-dynamic-graphs-2020">P09 · Temporal Graph Networks for Deep Learning on Dynamic Graphs (2020)</h3>
+<p>Combines temporal event processing, graph operators, and node memory. Consider event-time models after establishing a causal snapshot baseline.</p>
+<p>The main limitation is that memory updates, delayed events, and replay semantics add operational complexity.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2006.10637">Primary source</a></p>
+<h3 id="p10-gnnexplainer-generating-explanations-for-graph-neural-networks-2019">P10 · GNNExplainer: Generating Explanations for Graph Neural Networks (2019)</h3>
+<p>Identifies compact subgraphs and feature subsets important to a prediction. Evaluate explanation fidelity and stability against source-backed graph paths.</p>
+<p>The main limitation is that a model explanation is neither causal attribution nor legal evidence by itself.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/1903.03894">Primary source</a></p>
+<h3 id="p11-enhancing-graph-neural-network-based-fraud-detectors-against-camouflaged-fraudsters-2020">P11 · Enhancing Graph Neural Network-based Fraud Detectors against Camouflaged Fraudsters (2020)</h3>
+<p>Studies feature and relation camouflage and selective neighborhood aggregation. Stress-test dilution of risky neighborhoods by benign-looking neighbors.</p>
+<p>The main limitation is that fraud benchmark outcomes do not automatically transfer to AML investigations.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2008.08692">Primary source</a></p>
+<h3 id="p12-xfraud-explainable-fraud-transaction-detection-2020">P12 · xFraud: Explainable Fraud Transaction Detection (2020)</h3>
+<p>Combines heterogeneous transaction detection with an explanation component. Separate the risk detector from an independently inspectable evidence view.</p>
+<p>The main limitation is that fraud and money laundering have different labels, loss functions, and analyst objectives.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2011.12193">Primary source</a></p>
+<h3 id="p13-retrieval-augmented-generation-for-knowledge-intensive-nlp-tasks-2020">P13 · Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (2020)</h3>
+<p>Combines a parametric generator with explicit retrieved memory. Retrieve approved source excerpts and resolve citations before drafting narratives.</p>
+<p>The main limitation is that retrieval does not guarantee that generated claims are entailed by sources.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2005.11401">Primary source</a></p>
+<h3 id="p14-react-synergizing-reasoning-and-acting-in-language-models-2022">P14 · ReAct: Synergizing Reasoning and Acting in Language Models (2022)</h3>
+<p>Interleaves model-driven reasoning and actions in interactive tasks. Use bounded read-only tools and an explicit investigation state machine.</p>
+<p>The main limitation is that interactive benchmark success does not justify autonomous compliance decisions.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2210.03629">Primary source</a></p>
+<h3 id="p15-laundrograph-self-supervised-graph-representation-learning-for-anti-money-laundering-2022">P15 · LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering (2022)</h3>
+<p>Learns customer and transaction representations from a banking graph through link prediction. Test behavioral embeddings with a separate assessment of analyst usefulness.</p>
+<p>The main limitation is that its private banking data and proxy objective limit direct reproduction.</p>
+<p>Reviewed at the level of methods and experiments sections. <a href="https://arxiv.org/abs/2210.14360">Primary source</a></p>
+<h3 id="p16-provably-powerful-graph-neural-networks-for-directed-multigraphs-2024">P16 · Provably Powerful Graph Neural Networks for Directed Multigraphs (2024)</h3>
+<p>Studies adaptations including direction and port numbering for multigraph expressivity. Retain directed parallel transfers when selecting graph operators.</p>
+<p>The main limitation is that finGraph implements a simpler directed GraphSAGE comparator without port numbering.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2306.11586">Primary source</a></p>
+<h3 id="p17-graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection-2024">P17 · Graph Feature Preprocessor: Real-time Subgraph-based Feature Extraction for Financial Crime Detection (2024)</h3>
+<p>Extracts transaction graph patterns for downstream tree models. Compare graph-derived tabular features with neural message passing.</p>
+<p>The main limitation is that published throughput belongs to that implementation and benchmark.</p>
+<p>Reviewed at the level of primary-source abstract. <a href="https://research.ibm.com/publications/graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection">Primary source</a></p>
+<h3 id="p18-flowscope-spotting-money-laundering-based-on-graphs-2020">P18 · FlowScope: Spotting Money Laundering Based on Graphs (2020)</h3>
+<p>Uses flow structure across multipartite graphs to detect suspicious chains. Measure amounts and temporal ordering in addition to graph connectivity.</p>
+<p>The main limitation is that a detected pattern still needs economic context and source verification.</p>
+<p>Reviewed at the level of primary-source abstract. <a href="https://ojs.aaai.org/index.php/AAAI/article/view/5906">Primary source</a></p>
+<h3 id="p19-towards-collaborative-anti-money-laundering-among-financial-institutions-2025">P19 · Towards Collaborative Anti-Money Laundering Among Financial Institutions (2025)</h3>
+<p>Studies collaborative scatter-gather discovery under separated institutional graphs. Evaluate missing cross-bank edges as a source of detection failure.</p>
+<p>The main limitation is that federated sharing needs an explicit privacy model and institutional governance.</p>
+<p>Reviewed at the level of methods and experiment sections. <a href="https://arxiv.org/abs/2502.19952">Primary source</a></p>
+<h3 id="p20-temporal-graph-benchmark-for-machine-learning-on-temporal-graphs-2023">P20 · Temporal Graph Benchmark for Machine Learning on Temporal Graphs (2023)</h3>
+<p>Provides temporal graph tasks and reproducible evaluation protocols. Keep event-time splits and graph visibility explicit.</p>
+<p>The main limitation is that results on temporal link prediction do not measure AML classification.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2307.01026">Primary source</a></p>
+<h3 id="p21-towards-better-evaluation-for-dynamic-link-prediction-2022">P21 · Towards Better Evaluation for Dynamic Link Prediction (2022)</h3>
+<p>Shows the effect of evaluation choices and negative sampling on dynamic prediction. Record the negative population and time boundary of every experiment.</p>
+<p>The main limitation is that finGraph uses observed transaction labels rather than sampled link negatives.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2207.10128">Primary source</a></p>
+<h3 id="p22-knowledge-graphs-2021">P22 · Knowledge Graphs (2021)</h3>
+<p>Surveys graph representation, querying, reasoning, quality, and applications. Assign distinct roles to the asserted graph, validation rules, and learned features.</p>
+<p>The main limitation is that a broad survey supplies architectural guidance rather than a financial-crime benchmark.</p>
+<p>Reviewed at the level of abstract and scope. <a href="https://arxiv.org/abs/2003.02320">Primary source</a></p>
+<h3 id="p23-on-calibration-of-modern-neural-networks-2017">P23 · On Calibration of Modern Neural Networks (2017)</h3>
+<p>Examines confidence miscalibration and post-hoc calibration methods. Evaluate reliability on a dedicated temporal calibration set before interpreting scores as probabilities.</p>
+<p>The main limitation is that the present experiment has no fitted calibration stage.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://proceedings.mlr.press/v70/guo17a.html">Primary source</a></p>
+<h3 id="p24-the-precision-recall-plot-is-more-informative-than-the-roc-plot-when-evaluating-binary-classifiers-on-imbalanced-datasets-2015">P24 · The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets (2015)</h3>
+<p>Examines precision-recall evaluation under class imbalance. Report average precision, prevalence, and review-budget metrics together.</p>
+<p>The main limitation is that metrics vary with prevalence and the selected alert population.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://pubmed.ncbi.nlm.nih.gov/25738806/">Primary source</a></p>
+<h3 id="p25-parameterized-explainer-for-graph-neural-network-2020">P25 · Parameterized Explainer for Graph Neural Network (2020)</h3>
+<p>Learns a parameterized generator for graph explanations across instances. Assess explanation fidelity and stability before integrating an explainer.</p>
+<p>The main limitation is that explainer outputs require separate evidence provenance and analyst interpretation.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2011.04573">Primary source</a></p>
+<h3 id="p26-almost-all-of-entity-resolution-2022">P26 · (Almost) All of Entity Resolution (2022)</h3>
+<p>Reviews probabilistic linkage, clustering, and canonicalization. Track candidate identity matches, provenance, and reversible merge decisions.</p>
+<p>The main limitation is that the implementation requires resolved source identifiers and does not automate fuzzy merges.</p>
+<p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2008.04443">Primary source</a></p></main><footer>Deepak Yadav · FinGraph v0.2 · 18 November 2026</footer></body></html>

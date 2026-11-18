@@ -1,0 +1,52 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check api pipeline ml tests scripts/verify_stack.py
+      - run: ruff format --check api pipeline ml tests scripts/verify_stack.py
+      - run: python -m pytest -q --disable-warnings
+      - run: node --check app.js
+      - run: python -m compileall -q api pipeline ml
+  kafka-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start services
+        run: docker compose up --build -d
+      - name: Publish source events
+        run: docker compose run --rm worker python -m pipeline.cli publish
+      - name: Verify ingestion, projection and review
+        run: docker compose exec -T worker python -m scripts.verify_stack
+      - name: Restart worker and replay events
+        run: |
+          docker compose restart worker
+          docker compose run --rm worker python -m pipeline.cli publish
+          docker compose exec -T worker python -m scripts.verify_stack
+      - name: Service logs
+        if: always()
+        run: docker compose logs --no-color --tail=150
+      - name: Stop services
+        if: always()
+        run: docker compose down -v

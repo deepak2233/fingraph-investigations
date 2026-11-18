@@ -1,0 +1,17 @@
+@prefix fg: <https://fingraph.example/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+fg:TransactionShape a sh:NodeShape ; sh:targetClass fg:Transaction ;
+ sh:property [sh:path fg:sender; sh:minCount 1; sh:maxCount 1; sh:class fg:Account] ;
+ sh:property [sh:path fg:receiver; sh:minCount 1; sh:maxCount 1; sh:class fg:Account] ;
+ sh:property [sh:path fg:amount; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:decimal; sh:minExclusive 0] ;
+ sh:property [sh:path fg:currency; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:string; sh:pattern "^[A-Z]{3}$"] ;
+ sh:property [sh:path fg:occurredAt; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:dateTime] ;
+ sh:property [sh:path fg:sourceId; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:string] .
+fg:AccountShape a sh:NodeShape ; sh:targetClass fg:Account ;
+ sh:property [sh:path fg:heldBy; sh:minCount 1; sh:maxCount 1; sh:class fg:Party] .
+fg:OwnershipShape a sh:NodeShape ; sh:targetClass fg:OwnershipAssertion ;
+ sh:property [sh:path fg:owner; sh:minCount 1; sh:maxCount 1; sh:class fg:Party] ;
+ sh:property [sh:path fg:ownedEntity; sh:minCount 1; sh:maxCount 1; sh:class fg:LegalEntity] ;
+ sh:property [sh:path fg:percentage; sh:minCount 1; sh:maxCount 1; sh:datatype xsd:decimal; sh:minInclusive 0; sh:maxInclusive 100] ;
+ sh:property [sh:path fg:supportedBy; sh:minCount 1; sh:class fg:Evidence] .

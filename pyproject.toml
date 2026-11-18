@@ -1,0 +1,17 @@
+[project]
+name = "fingraph-investigations"
+version = "0.2.0"
+description = "Evidence-based financial crime investigation research platform"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:rdflib.*"]
+
+[tool.ruff]
+line-length = 105
+target-version = "py312"
+exclude = ["scripts/build_project.py", "scripts/build_research.py", "scripts/package_docs.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

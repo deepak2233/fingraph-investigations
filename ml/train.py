@@ -26,6 +26,7 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 import torch
 from torch import nn
+from ml.diagnostics import evaluation_detail, feature_groups, permutation_diagnostics
 
 CUTOFFS = ["2022-09-04T00:00:00Z", "2022-09-08T00:00:00Z", "2022-09-09T00:00:00Z"]
 
@@ -102,6 +103,7 @@ def metrics(labels, scores, threshold):
     count = max(1, int(np.ceil(len(labels) * 0.01)))
     top = np.argsort(-scores, kind="stable")[:count]
     return {
+        **evaluation_detail(labels, scores, threshold),
         "rows": len(labels),
         "positives": int(labels.sum()),
         "prevalence": float(labels.mean()),
@@ -216,6 +218,13 @@ def train(data_dir, output, epochs=20):
     ]
     baseline_exports = {}
     baseline_scores = {}
+    baseline_names = feature_names + [
+        f"{side}_{field}"
+        for side in ["sender", "receiver"]
+        for field in ["log_in_count", "log_out_count", "has_in_history", "has_out_history"]
+    ]
+    groups = feature_groups(baseline_names)
+    diagnostics = {}
     for name, estimator in [
         (
             "logistic_regression",
@@ -238,6 +247,7 @@ def train(data_dir, output, epochs=20):
         validation = estimator.predict_proba(tabular[1])[:, 1]
         test = estimator.predict_proba(tabular[2])[:, 1]
         baseline_scores[name] = test
+        diagnostics[name] = permutation_diagnostics(estimator, tabular[1], labels[1], groups)
         if name == "logistic_regression":
             baseline_exports[name] = {
                 "weights": estimator.coef_[0].tolist(),
@@ -273,6 +283,10 @@ def train(data_dir, output, epochs=20):
             "validation": metrics(labels[1], validation, decision_threshold),
             "test": metrics(labels[2], test, decision_threshold),
         }
+        baseline_exports[name]["feature_names"] = baseline_names
+        baseline_exports[name]["feature_groups"] = groups
+        # One real training feature row is used as a reproducible local perturbation reference.
+        baseline_exports[name]["reference_vector"] = tabular[0][0].tolist()
     output.mkdir(parents=True, exist_ok=True)
     (output / "baseline_models.json").write_text(json.dumps(baseline_exports, separators=(",", ":")))
     weights = {key: value.numpy().tolist() for key, value in best_state.items()}
@@ -302,6 +316,7 @@ def train(data_dir, output, epochs=20):
         "train_rows": len(periods[0]),
         "train_positives": int(labels[0].sum()),
         "models": results,
+        "validation_permutation": diagnostics,
         "training_history": history,
         "training_seconds": round(time.monotonic() - started, 2),
         "model_sha256": sha256((output / "gnn_model.json").read_bytes()).hexdigest(),

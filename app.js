@@ -14,6 +14,16 @@ let cases = [],
   busy = false,
   papers = [];
 const titles = {
+  overview: [
+    "Understand the investigation.",
+    "Goals, measured outcomes, boundaries and a guided exercise.",
+    "Goal & scope",
+  ],
+  data: [
+    "Inspect how records become evidence.",
+    "Source tables, typed RDF relationships, SPARQL results and live validation.",
+    "Data & RDF explorer",
+  ],
   models: [
     "Inspect the model evidence.",
     "Measured benchmark results and live inference on synthetic banking transactions.",
@@ -55,13 +65,14 @@ function showView(view) {
   $("page-title").textContent = titles[view][0];
   $("page-subtitle").textContent = titles[view][1];
   $("breadcrumb").textContent = titles[view][2];
+  history.replaceState(null, "", "#" + view);
 }
 document
   .querySelectorAll(".nav")
   .forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
 $("scope-link").addEventListener("click", (e) => {
   e.preventDefault();
-  showView("architecture");
+  showView("overview");
 });
 async function request(path, options = {}) {
   const response = await fetch(path, options);
@@ -106,9 +117,10 @@ function choose(id) {
   $("status").textContent = "";
   $("result").innerHTML =
     '<div class="empty-state"><div class="empty-icon">⌘</div><h3>Inspect the network. Then investigate.</h3><p>The workflow checks graph signals, screening freshness, ownership, and evidence.<br>Every draft requires review.</p></div>';
+  $("rule-explainer").classList.add("hidden");
   drawNetwork();
 }
-function drawNetwork() {
+function drawNetwork(highlight = []) {
   const active = [
     ...new Set(selected.transactions.flatMap((t) => [t.sender, t.receiver])),
   ];
@@ -128,7 +140,7 @@ function drawNetwork() {
       dy = (y2 - y1) / len;
     const mx = (x1 + x2) / 2,
       my = (y1 + y2) / 2;
-    lines += `<line x1="${x1 + dx * 24}" y1="${y1 + dy * 24}" x2="${x2 - dx * 27}" y2="${y2 - dy * 27}" stroke="#b8c9d3" stroke-width="1.4" marker-end="url(#arrow)"/><rect x="${mx - 29}" y="${my - 9}" width="58" height="18" rx="4" fill="white"/><text x="${mx}" y="${my + 3}" text-anchor="middle" font-size="10" fill="#6b8493">$${(Number(t.amount) / 1000).toFixed(1)}k</text>`;
+    lines += `<line x1="${x1 + dx * 24}" y1="${y1 + dy * 24}" x2="${x2 - dx * 27}" y2="${y2 - dy * 27}" stroke="${highlight.includes(t.id) ? "#bc6335" : "#b8c9d3"}" stroke-width="${highlight.includes(t.id) ? 3 : 1.4}" marker-end="url(#arrow)"/><rect x="${mx - 57}" y="${my - 9}" width="114" height="18" rx="4" fill="white"/><text x="${mx}" y="${my + 3}" text-anchor="middle" font-size="10" fill="#6b8493">${esc(t.id)} · ${esc(t.currency)} ${(Number(t.amount) / 1000).toFixed(1)}k</text>`;
   }
   for (const id of active) {
     const [x, y] = coords[id];
@@ -169,6 +181,7 @@ $("run").addEventListener("click", async () => {
       body: JSON.stringify({ case_id: selected.id }),
     });
     renderResult();
+    renderRuleExplanation();
     $("status").textContent = "Workflow complete. Analyst review is required.";
   } catch (e) {
     $("status").className = "error";
@@ -307,6 +320,7 @@ async function loadModels() {
       )
       .join("");
     renderModelInput();
+    if (typeof renderEvaluation === "function") renderEvaluation();
   } catch (error) {
     $("model-summary").innerHTML = `<p class="error">${esc(error.message)}</p>`;
   }
@@ -319,6 +333,9 @@ function renderModelInput() {
   $("model-input").innerHTML =
     `<dl><dt>Transfer</dt><dd>${esc(item.sender)} → ${esc(item.receiver)}</dd><dt>Method</dt><dd>${esc(item.format)}</dd><dt>Timestamp</dt><dd>${esc(item.timestamp)}</dd><dt>Graph history cutoff</dt><dd>${esc(item.graph_cutoff)}</dd></dl>`;
   $("model-output").textContent = "";
+  if ($("prediction-explanation"))
+    $("prediction-explanation").innerHTML =
+      "<p>Score this transaction to inspect its prediction explanation.</p>";
 }
 $("model-example").addEventListener("change", renderModelInput);
 $("score-model").addEventListener("click", async () => {
@@ -331,6 +348,7 @@ $("score-model").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ example_id: $("model-example").value }),
     });
+    if (typeof renderExplanation === "function") renderExplanation(result);
     $("model-output").innerHTML =
       Object.entries(result.scores)
         .map(
@@ -442,3 +460,26 @@ $("evidence-service").addEventListener("click", () =>
   submitServiceReview("request_evidence"),
 );
 loadModels();
+
+function renderRuleExplanation() {
+  const host = $("rule-explainer");
+  host.classList.remove("hidden");
+  host.innerHTML = `<h3>Why these findings appeared</h3><p>These are deterministic rule explanations. The orange edges show the source transfers supporting a selected finding.</p>${current.signals.map((signal, i) => `<button class="secondary" data-signal="${i}">${esc(signal.type)} · ${signal.points} points</button>`).join(" ")}<button class="secondary" id="clear-highlight">Show all transfers</button><div id="rule-detail"></div>`;
+  const inspect = (signal) => {
+    drawNetwork(signal?.evidence || []);
+    $("rule-detail").innerHTML = signal
+      ? `<p><b>${esc(signal.id)}</b> · ${esc(signal.description)}</p><p>Rule evidence: ${signal.evidence.map(esc).join(", ")}. Prioritisation points are configured constants, not learned probabilities.</p><p>Alternative explanation to investigate: legitimate supplier settlement, treasury movement or intercompany cash management. Obtain economic purpose and source-of-funds evidence before escalation.</p>`
+      : "<p>No finding is selected. No configured signal does not establish legitimate activity.</p>";
+  };
+  document
+    .querySelectorAll("[data-signal]")
+    .forEach((b) =>
+      b.addEventListener("click", () =>
+        inspect(current.signals[Number(b.dataset.signal)]),
+      ),
+    );
+  $("clear-highlight").addEventListener("click", () => inspect(null));
+  inspect(current.signals[0]);
+}
+const initialView = location.hash.slice(1);
+showView(titles[initialView] ? initialView : "overview");

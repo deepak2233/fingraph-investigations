@@ -53,6 +53,7 @@ def predict_example(identifier):
         "graph_cutoff": example["graph_cutoff"],
         "inference": "Live edge-head computation using graph embeddings precomputed before the test period",
         "score_semantics": model()["score_semantics"],
+        "explanations": explain(example["baseline_input"]),
     }
 
 
@@ -80,3 +81,45 @@ def baseline_score(name, vector):
                 node = tree[index]
             logit += node["value"]
     return 1 / (1 + math.exp(-max(-700, min(700, logit))))
+
+
+def explain(vector):
+    linear = baselines()["logistic_regression"]
+    contributions = [
+        {"feature": name, "value": value, "weight": weight, "logit_contribution": value * weight}
+        for name, value, weight in zip(linear["feature_names"], vector, linear["weights"])
+    ]
+    logit = linear["intercept"] + sum(item["logit_contribution"] for item in contributions)
+    tree = baselines()["histogram_gradient_boosting"]
+    score_value = baseline_score("histogram_gradient_boosting", vector)
+    changes = []
+    for group, indices in tree["feature_groups"].items():
+        replaced = list(vector)
+        for index in indices:
+            replaced[index] = tree["reference_vector"][index]
+        alternative = baseline_score("histogram_gradient_boosting", replaced)
+        changes.append(
+            {
+                "group": group,
+                "original_score": score_value,
+                "reference_replacement_score": alternative,
+                "score_difference": score_value - alternative,
+            }
+        )
+    return {
+        "logistic": {
+            "intercept": linear["intercept"],
+            "logit": logit,
+            "contributions": sorted(
+                contributions, key=lambda item: abs(item["logit_contribution"]), reverse=True
+            ),
+            "method": "Exact additive log-odds decomposition: intercept + sum(value × weight). These are model terms, not causal effects.",
+        },
+        "gradient_boosting": {
+            "sensitivity": sorted(changes, key=lambda item: abs(item["score_difference"]), reverse=True),
+            "method": "Replace one feature group with values from the first training row and rescore the frozen model. This artificial input may be unrealistic; effects are not additive, causal, or SHAP values.",
+        },
+        "graphsage": {
+            "method": "Prediction uses two frozen historical node embeddings plus transaction features. A faithful edge attribution method has not been implemented; the rule graph explains rule findings only."
+        },
+    }

@@ -26,7 +26,7 @@ jobs:
       - run: ruff check api pipeline ml tests scripts/verify_stack.py
       - run: ruff format --check api pipeline ml tests scripts/verify_stack.py
       - run: python -m pytest -q --disable-warnings
-      - run: node --check app.js
+      - run: node --check app.js && node --check lab.js
       - run: python -m compileall -q api pipeline ml
   kafka-postgres:
     runs-on: ubuntu-latest

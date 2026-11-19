@@ -10,6 +10,7 @@
     <title>FinGraph | Investigation Workbench</title>
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
+    <script src="/lab.js" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -18,6 +19,12 @@
       >
       <div class="workspace">RESEARCH WORKSPACE</div>
       <nav aria-label="Main navigation">
+        <button class="nav" data-view="overview">
+          ◎ <span>Goal & scope</span>
+        </button>
+        <button class="nav" data-view="data">
+          ▧ <span>Data & RDF explorer</span>
+        </button>
         <button class="nav active" data-view="investigation">
           ◈ <span>Investigations</span><small>05</small></button
         ><button class="nav" data-view="models">◉ <span>Model lab</span></button
@@ -33,7 +40,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="avatar">DY</div>
-        <div>Deepak Yadav<small>Research project · v0.2</small></div>
+        <div>Deepak Yadav<small>Research project · v0.3</small></div>
       </div>
     </aside>
     <div class="shell">
@@ -69,6 +76,158 @@
           </p>
           <a href="#" id="scope-link">View system scope ↗</a>
         </div>
+        <section id="overview" class="view hidden">
+          <div class="section-intro">
+            <h2>What this system is meant to achieve.</h2>
+            <p>
+              An inspectable engineering exercise: source data, semantics,
+              investigation, measurement and limitations.
+            </p>
+          </div>
+          <div class="guide-grid" data-guide="overview"></div>
+          <div class="panel padded walkthrough">
+            <h3>Work through the exercise</h3>
+            <ol>
+              <li>
+                <button class="text-link" data-jump="data">
+                  Inspect source tables and the RDF projection</button
+                >. Select a node to see the exact triples.
+              </li>
+              <li>
+                <button class="text-link" data-jump="ontology">
+                  Read the ontology construction method</button
+                >. Compare the vocabulary with its constraints.
+              </li>
+              <li>
+                In Data & RDF, remove a sender or evidence link. Read the actual
+                SHACL failure.
+              </li>
+              <li>
+                <button class="text-link" data-jump="investigation">
+                  Run the investigation</button
+                >. Highlight the transactions supporting a finding.
+              </li>
+              <li>
+                <button class="text-link" data-jump="models">
+                  Compare models and review budgets</button
+                >. Score a held-out record and inspect its explanation.
+              </li>
+              <li>
+                <button class="text-link" data-jump="pipeline">
+                  Inspect the durable pipeline</button
+                >. Use the repository commands to reproduce restart and replay.
+              </li>
+            </ol>
+          </div>
+          <div class="section-intro">
+            <h2>Improvement scope and acceptance criteria</h2>
+            <p>
+              Priorities for the next iteration. These items are planned, not
+              completed capabilities.
+            </p>
+          </div>
+          <div class="guide-grid" data-guide="improvements"></div>
+        </section>
+        <section id="data" class="view hidden">
+          <div class="section-intro">
+            <h2>From source rows to typed relationships.</h2>
+            <p>
+              These five authored scenarios teach the semantic workflow. The
+              separate IBM benchmark trains and evaluates the models.
+            </p>
+          </div>
+          <div class="control-grid panel padded">
+            <label
+              >Scenario<select
+                id="data-case"
+                aria-label="Data scenario"
+              ></select></label
+            ><label
+              >Validation exercise<select id="graph-variant">
+                <option value="valid">Original valid graph</option>
+                <option value="negative_amount">Set first amount to −1</option>
+                <option value="missing_sender">Remove first sender</option>
+                <option value="missing_evidence">
+                  Remove one ownership evidence link
+                </option>
+              </select></label
+            ><label
+              >SPARQL template<select id="graph-query">
+                <option value="transactions">Transaction provenance</option>
+                <option value="ownership">
+                  Source-backed direct ownership
+                </option>
+                <option value="shared_owners">Shared asserted owners</option>
+              </select></label
+            ><button class="primary" id="load-graph">
+              Build and validate graph
+            </button>
+          </div>
+          <div id="data-status" role="status" aria-live="polite"></div>
+          <div id="data-stats" class="stats"></div>
+          <div class="panel padded">
+            <h3>Raw source records</h3>
+            <p id="data-origin"></p>
+            <div class="table-scroll" id="source-transactions"></div>
+            <details>
+              <summary>Account and registry fields</summary>
+              <div class="table-scroll" id="source-accounts"></div>
+            </details>
+            <details>
+              <summary>Canonical source JSON</summary>
+              <pre id="source-json"></pre>
+            </details>
+          </div>
+          <div class="model-workbench">
+            <section class="panel padded">
+              <h3>RDF neighbourhood explorer</h3>
+              <p>
+                Arrows are named RDF relationships. Select a resource to move to
+                its immediate neighbourhood. Literal values appear in the
+                inspector.
+              </p>
+              <label for="rdf-focus">Focus resource</label
+              ><select id="rdf-focus"></select>
+              <div id="rdf-network"></div>
+              <p class="muted">
+                The diagram shows one-hop resource links, not the complete
+                graph. Transaction values are properties of transaction nodes.
+              </p>
+            </section>
+            <section class="panel padded">
+              <h3>Resource inspector</h3>
+              <div id="rdf-inspector"></div>
+            </section>
+          </div>
+          <div class="panel padded space-top">
+            <h3>Live SHACL result</h3>
+            <div id="validation-result"></div>
+          </div>
+          <div class="panel padded space-top">
+            <h3>Execute a bounded SPARQL query</h3>
+            <p>
+              Choose a template above and rebuild. Invalid graphs remain
+              inspectable for this exercise; they cannot proceed into the
+              investigation pipeline.
+            </p>
+            <pre id="sparql-source"></pre>
+            <div class="table-scroll" id="sparql-rows"></div>
+          </div>
+          <div class="panel padded space-top">
+            <h3>Serialized graph</h3>
+            <label for="triple-filter">Filter asserted instance triples</label
+            ><input
+              id="triple-filter"
+              placeholder="Try A001, supportedBy, amount…"
+            />
+            <div id="triple-count" class="muted"></div>
+            <div class="table-scroll triple-scroll" id="rdf-triples"></div>
+            <details>
+              <summary>Complete Turtle, including ontology vocabulary</summary>
+              <pre id="rdf-turtle"></pre>
+            </details>
+          </div>
+        </section>
         <section id="investigation" class="view">
           <div class="stats">
             <article>
@@ -132,6 +291,7 @@
               </div>
             </section>
           </div>
+          <div id="rule-explainer" class="panel padded space-top hidden"></div>
           <div id="status" role="status" aria-live="polite"></div>
           <section class="panel results">
             <div class="panel-heading">
@@ -165,6 +325,15 @@
             </p>
           </div>
           <div id="model-summary" class="stats"></div>
+          <div class="panel padded decision-banner">
+            <h3>Active benchmark leader: gradient boosting</h3>
+            <p>
+              Selected by validation average precision. All three trained models
+              are available for live inference below. Investigation scenarios
+              use explicit rules; ML scores do not determine their case
+              outcomes.
+            </p>
+          </div>
           <div class="panel padded">
             <h3>Held-out benchmark</h3>
             <p class="muted">
@@ -176,6 +345,62 @@
               <table class="evidence-table" id="metric-table"></table>
             </div>
             <p id="model-conclusion"></p>
+          </div>
+          <div class="panel padded space-top">
+            <h3>Choose a review budget</h3>
+            <p>
+              Rank all 43,126 held-out rows. Compare how many labelled positives
+              each approach finds within the same review capacity.
+            </p>
+            <label for="review-budget"
+              >Percentage of transactions reviewed</label
+            ><input
+              id="review-budget"
+              type="range"
+              min="0"
+              max="5"
+              value="2"
+              step="1"
+            /><output id="budget-label"></output>
+            <div id="budget-chart"></div>
+            <div class="table-scroll" id="budget-table"></div>
+          </div>
+          <div class="model-workbench">
+            <section class="panel padded">
+              <h3>Precision–recall curves</h3>
+              <div id="pr-chart"></div>
+              <p class="muted">
+                All three models; curve vertices sampled for display. Headline
+                AP uses all predictions. The random-ranking baseline is positive
+                prevalence.
+              </p>
+            </section>
+            <section class="panel padded">
+              <h3>ROC curves</h3>
+              <div id="roc-chart"></div>
+              <p class="muted">
+                ROC AUC can look strong with a very large negative class. Read
+                it alongside precision and review volume.
+              </p>
+            </section>
+          </div>
+          <div class="panel padded space-top">
+            <h3>Errors at the validation-selected threshold</h3>
+            <label for="diagnostic-model">Model to inspect</label
+            ><select id="diagnostic-model">
+              <option value="histogram_gradient_boosting">
+                Gradient boosting
+              </option>
+              <option value="logistic_regression">Logistic regression</option>
+              <option value="directed_graphsage">Directed GraphSAGE</option>
+            </select>
+            <div id="confusion-matrix"></div>
+            <div id="calibration-table" class="table-scroll"></div>
+            <p class="muted">
+              Reliability bins compare average score with observed positive
+              frequency. No calibration was fitted; the score is not a validated
+              probability.
+            </p>
           </div>
           <div class="model-workbench">
             <section class="panel padded">
@@ -210,6 +435,47 @@
               >
             </section>
           </div>
+          <section class="panel padded space-top">
+            <h3>Explain the selected prediction</h3>
+            <div id="prediction-explanation">
+              <p>
+                Score a transaction above to inspect the exact logistic
+                contribution terms and gradient-boosting sensitivity.
+              </p>
+            </div>
+          </section>
+          <div class="section-intro">
+            <h2>Training, features and model selection</h2>
+          </div>
+          <div class="guide-grid" data-guide="training"></div>
+          <div class="model-workbench">
+            <section class="panel padded">
+              <h3>GraphSAGE learning trace</h3>
+              <div id="training-chart"></div>
+              <p class="muted">
+                Validation AP by epoch. The selected checkpoint is the maximum
+                validation AP, not the final epoch.
+              </p>
+              <details>
+                <summary>Exact epoch loss and validation AP</summary>
+                <div id="training-table" class="table-scroll"></div>
+              </details>
+            </section>
+            <section class="panel padded">
+              <h3>Validation feature-group reliance</h3>
+              <div id="importance-chart"></div>
+              <div id="importance-table" class="table-scroll"></div>
+              <p class="muted">
+                Gradient boosting, three deterministic permutations per group. A
+                negative drop means the permutation improved AP. This is
+                diagnostic reliance, not causality.
+              </p>
+            </section>
+          </div>
+          <div class="section-intro">
+            <h2>Results, explanations and limits</h2>
+          </div>
+          <div class="guide-grid" data-guide="interpretation"></div>
         </section>
         <section id="pipeline" class="view hidden">
           <div class="section-intro">
@@ -317,6 +583,42 @@
               OWL defines vocabulary and semantics. SHACL validates records.
               SPARQL retrieves explicit relationships. These solve different
               problems.
+            </p>
+          </div>
+          <div class="guide-grid" data-guide="ontology"></div>
+          <div class="panel padded space-top">
+            <h3>The actual vocabulary used by the graph builder</h3>
+            <div id="ontology-schema"></div>
+            <details>
+              <summary>OWL vocabulary in Turtle</summary>
+              <pre id="ontology-turtle"></pre>
+            </details>
+            <details>
+              <summary>SHACL shapes in Turtle</summary>
+              <pre id="shapes-turtle"></pre>
+            </details>
+            <p>
+              Primary standards:
+              <a
+                href="https://www.w3.org/TR/owl2-primer/"
+                target="_blank"
+                rel="noopener"
+                >OWL 2</a
+              >
+              ·
+              <a
+                href="https://www.w3.org/TR/shacl/"
+                target="_blank"
+                rel="noopener"
+                >SHACL</a
+              >
+              ·
+              <a
+                href="https://www.w3.org/TR/sparql11-query/"
+                target="_blank"
+                rel="noopener"
+                >SPARQL 1.1</a
+              >.
             </p>
           </div>
           <div class="info-grid">

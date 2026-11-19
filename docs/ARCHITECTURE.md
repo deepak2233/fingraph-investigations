@@ -206,3 +206,143 @@ The most material extensions are full-history graph features, independent tempor
 The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.
 
 <!-- PAPER_REGISTER -->
+
+
+## 17. Interactive exercise and interpretation
+
+The expanded application provides the actual source tables, RDF instances, a navigable neighbourhood graph, allowlisted SPARQL results and live invalid-graph exercises. Its evaluation views are generated from the same stored artifact as the metrics below.
+
+| Model | Validation AP | Test AP | Test ROC AUC | Precision at top 1% | Recall at top 1% |
+|---|---:|---:|---:|---:|---:|
+| Directed GraphSAGE | 0.0133 | 0.0117 | 0.8466 | 0.46% | 2.70% |
+| Logistic regression | 0.0115 | 0.0179 | 0.9407 | 1.16% | 6.76% |
+| Gradient boosting | 0.0674 | 0.0900 | 0.9608 | 6.71% | 39.19% |
+
+### The problem and the user
+
+A bank investigation analyst has an alert, transaction records, KYC identifiers and registry assertions. Those records live in separate systems. FinGraph assembles their relationships, checks whether the evidence is structurally complete, and prepares a reviewable account of what was observed. A pattern is an investigation lead, not a finding of crime.
+
+### Goal and success criteria
+
+The engineering goal is a reproducible path from source record to evidence-linked draft and recorded human decision. Success means replay does not duplicate cases, invalid records are quarantined, every finding resolves to evidence, tenant boundaries hold, and a review survives restart. The model goal is higher retrieval of labelled suspicious transactions within a fixed review budget. Analyst time saved, loss prevented and real-bank effectiveness have not been measured.
+
+### Who does what
+
+Data engineering supplies resolved account and party IDs. The worker validates and investigates. The analyst checks economic purpose and evidence. A reviewer records a decision with an authenticated identity. Compliance policy owners define thresholds and escalation rules. This application does not freeze accounts, decide guilt or file a regulatory report.
+
+### What is active today
+
+The public app executes RDF construction, SHACL validation, bounded SPARQL queries, five deterministic LangGraph steps and inference for three trained models. PostgreSQL/Kafka integration runs in GitHub CI and the local Docker stack. AWS Neptune is an implemented transport adapter tested with a mock endpoint. Live screening, bank feeds and a production identity provider are not connected.
+
+### Why combine semantics and machine learning?
+
+The ontology defines what a transfer, holder and ownership assertion mean. SHACL blocks malformed evidence. Rules explain specific temporal motifs. ML ranks examples by statistical patterns. SQL records workflow state and decisions. These responsibilities complement one another, but the current GNN benchmark is a separate experiment: no measured accuracy improvement from the ontology or agent workflow is claimed.
+
+### A worked investigation
+
+Open Rapid fan-out and run the workflow. Four recipients within 60 minutes create 40 prioritisation points. Click a finding to highlight its source transfers. Inspect A001 in Data & RDF, then follow heldBy to its legal entity and the ownership assertion to its source. Remove supportedBy in the validation exercise: the ownership claim fails SHACL. Restore the valid graph before investigation.
+
+### 1. Start with competency questions
+
+Which account sent each transfer? Who holds that account? Which source supports a direct ownership percentage? Are two active accounts linked to the same asserted owner? Is a critical field missing? These questions determine the vocabulary and queries. They are more useful design inputs than trying to model every financial concept at once.
+
+### 2. Separate the things being described
+
+An Account is not its holder. A LegalEntity is not a Person. A Transaction is an event with amount, currency, time and provenance, not just an unlabeled line. OwnershipAssertion is a separate record so percentage, subject entity and supporting evidence stay together. Evidence is distinct from the claim it supports.
+
+### 3. Define stable identifiers and types
+
+Canonical identifiers become ex: resources. The source account ID maps to ex:A001, holder ID to ex:E001 and owner ID to ex:P001. Person and LegalEntity are subclasses of Party. Object properties connect resources; datatype properties carry decimals, timestamps and strings. These examples use an illustrative namespace; a deployment needs an institution-controlled namespace and entity-resolution policy.
+
+### 4. Map source fields explicitly
+
+The graph builder maps sender and receiver to Account resources, amount to xsd:decimal, and timestamp to xsd:dateTime. Registry source and observation time become evidence attributes. An ownership assertion is materialised only when its required source fields exist. The missing-ownership scenario intentionally omits A001’s assertion. No absent owner is inferred from a name.
+
+### 5. Validate before reasoning about risk
+
+SHACL checks cardinality, class and datatype constraints. Transactions require exactly one sender, receiver, positive amount, currency, timestamp and source ID. Ownership assertions require an owner, legal entity, percentage between 0 and 100, and supporting Evidence. The JSON contract separately checks unique IDs, references and timestamps. Neither layer proves that the source record is true.
+
+### 6. Query, review and version
+
+Run the allowlisted SPARQL templates against the generated graph and compare answers with the source tables. Add regression cases for missing fields, changed types and conflicting claims. Review new terms with domain owners before changing the version. This repository supplies an OWL vocabulary, RDFS-assisted SHACL validation and explicit graph queries. It does not run full OWL DL reasoning or certify FIBO alignment.
+
+### Why a separate ownership assertion?
+
+A direct owner edge cannot carry multiple dated sources cleanly. A claim node preserves whose assertion it is, the entity it concerns, the percentage and supporting record. The current example is a snapshot with one assertion per account. Conflicting sources, validity intervals, indirect ownership chains and legal control rules still require a richer implementation.
+
+### What the ontology does not do
+
+OWL domain and range describe semantics; they are not substitutes for validation. Missing facts remain unknown. Shared direct ownership does not establish illicit conduct. A cycle in the transaction graph does not establish money laundering. RDF is used for meaning and provenance; the research GNN consumes numerical transaction graph features, not an OWL reasoning output.
+
+### Source and sampling
+
+IBM AMLworld HI-Small contains 5,078,345 synthetic transfers. The importer verifies the exact CSV checksum, samples each row with probability 0.05 using seed 42 without consulting labels, and sorts by timestamp and source row. The resulting 253,980 rows contain 267 positives. This removes neighbours and motifs, so results are for this sampled graph only. IBM’s labels are generated simulation labels, not adjudicated bank cases.
+
+### Temporal protocol and leakage controls
+
+History before 4 September 2022 supplies the training graph. Training targets span 4–7 September. Validation targets are 8 September with history strictly before that day. Test targets begin 9 September with history strictly before that day. Target-period edges are excluded from that period’s graph. Scaler and categorical vocabulary are fitted on training targets. Raw account IDs are graph indices, not learned identity features.
+
+### Directed GraphSAGE
+
+Two layers concatenate self, incoming-neighbour mean and outgoing-neighbour mean representations. Hidden size is 16. The edge head concatenates sender and receiver embeddings with transaction features, then uses a 32-unit ReLU layer and one logit. Adam trains 20 epochs at learning rate 0.003 with weight decay 0.0001, square-root imbalance weighting and gradient clipping at 5. Epoch 12 was selected by validation average precision.
+
+### Tabular baselines and fair comparison
+
+Logistic regression uses balanced class weights and up to 300 iterations. Histogram gradient boosting uses 100 iterations, 15 leaves, learning rate 0.08, L2 regularisation 1 and balanced weights. Both use the same transaction fields and past-only endpoint activity counts as the GNN, without neighbour aggregation. Hyperparameters are fixed; no test-set tuning is performed.
+
+### Features and deployed inference
+
+Transaction features encode log amount, self transfer, same bank, currency change, same-currency amount difference, payment currency and payment format. Endpoint features describe historical in/out counts and presence. The browser selects held-out examples; Python recomputes the three prediction heads from JSON weights. GNN embeddings are precomputed from the historical test snapshot. The public app does not train on demand or refresh embeddings for arbitrary new bank transactions.
+
+### Why accuracy is misleading
+
+Only 74 of 43,126 test rows are positive. A classifier that always predicts negative has 99.83% accuracy and finds zero positive cases. Select models using validation average precision, then report test average precision, precision and recall at a review budget, and a confusion matrix at a validation-selected threshold. Scores from class-weighted models are uncalibrated ranking values.
+
+### Which model wins here?
+
+Gradient boosting has the highest validation average precision (0.0674), so it is the benchmark leader before looking at the test result. On the test set its average precision is 0.0900, versus 0.0179 for logistic regression and 0.0117 for GraphSAGE. At a 1% review budget it finds 29 of 74 positive rows among 432 reviews. This leaves 403 false positives and 45 missed positives. It is the best of these three in this experiment, not a production-qualified detector.
+
+### What evidence supports the explanation?
+
+Validation-only grouped permutation tests measure the decrease in average precision when a feature group is shuffled. Gradient boosting relies strongly on payment format, amount and currency in this sample. Trees can represent nonlinear interactions among those fields. The permutation plot provides measured reliance, but does not prove those features cause laundering or prove why one algorithm outperforms another.
+
+### Why the GNN may lag
+
+Plausible causes include removal of 95% of transfers, loss of graph motifs, only 110 positive training targets, frozen graph snapshots and a small untuned architecture. These are hypotheses. A controlled full-graph experiment, retrained graph ablation, multiple seeds and matched tuning budgets are required to isolate the cause. More graph complexity is not automatically better.
+
+### Four different explanation layers
+
+Source provenance answers where a fact came from. Rule traces answer which temporal condition fired and which transfers support it. Logistic contributions reconstruct an exact model logit. Gradient-boosting perturbations show sensitivity to an artificial reference substitution. None is a legal explanation, a causal proof or a faithful attribution of GNN edges.
+
+### Threshold versus review budget
+
+A fixed threshold is selected by maximum validation F1 and carried unchanged into the test set. A top-k review budget instead sorts the whole held-out batch and reviews its highest scores. They are different operating policies. The budget explorer shows realised retrospective counts, not an online alert-volume guarantee.
+
+### Uncertainty and operational impact
+
+One seed, 32 validation positives and 74 test positives make the comparison fragile. No confidence interval, cross-bank evaluation, calibration fit, analyst-time study or cost-benefit trial has been completed. The graphs reveal the measured errors and limits rather than hiding them behind one accuracy percentage.
+
+### P0 · Connect evidence safely
+
+Add source-specific bank adapters, approved screening feeds, production OIDC and secrets management. Acceptance: contract tests against representative source samples, freshness checks, deny-by-default roles and verified provenance. Live sanctions checks must distinguish candidate matching from analyst resolution.
+
+### P0 · Validate persistence at operational load
+
+Add schema migrations, SQL tenant isolation controls, Kafka TLS/SASL, bounded worker concurrency, retry backoff, an operational DLQ and reconciliation. Acceptance: repeatable load tests at the institution’s stated event rate; crash recovery at each commit boundary; measured backlog, p95 latency, error rates and recovery objectives. Current single-broker CI proves a small functional flow only.
+
+### P1 · Improve the model experiment
+
+Train on a full graph or preserve complete temporal neighbourhoods; run multiple seeds and rolling holdouts; compare retrained graph/no-graph ablations and tune with equal budgets. Acceptance: report distributions and confidence intervals for average precision and recall at the same review budget. Promote a GNN only if that evidence beats the tabular baseline.
+
+### P1 · Calibrate and challenge the decision policy
+
+Fit calibration on a separate validation window, measure reliability and drift, and choose thresholds with an explicit review capacity and error-cost model. Acceptance: out-of-time calibration and stability checks, analyst review and a documented fallback to the previously approved model. No threshold should be chosen from this test set for deployment.
+
+### P1 · Extend semantics and explanation
+
+Add entity-resolution provenance, conflicting claims, validity intervals, multi-layer ownership and policy-specific control rules. Evaluate evidence coverage, explanation fidelity and missing-data behaviour. GNN edge explanations need a separate fidelity benchmark; a highlighted rule path cannot stand in for a learned model explanation.
+
+### P2 · Validate the business outcome
+
+Run a blinded analyst study or approved shadow deployment. Measure review time, useful-case yield, missed-case discovery, disagreement and escalation quality. Add disaster recovery, independent security testing, governance and retention controls. Operational benefit remains a target until measured with the intended users and data.
+

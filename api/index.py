@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from api.core import CASES, investigate
+from api.explorer import Query, Variant, explore, ontology_schema
 from ml.inference import examples, predict_example
 from pipeline.auth import Principal, principal
 from pipeline.contracts import CaseEvent, Review
@@ -42,7 +43,7 @@ async def lifespan(_):
 
 app = FastAPI(
     title="FinGraph Investigations",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
     description="Synthetic research workbench with a separate authenticated, durable service API.",
 )
@@ -105,7 +106,7 @@ class ModelRequest(BaseModel):
 def health():
     return {
         "status": "ok",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "mode": "synthetic_research_workbench",
         "models_trained": (ROOT / "artifacts/gnn_model.json").exists(),
         "durable_service_configured": bool(os.getenv("DATABASE_URL")),
@@ -121,6 +122,19 @@ def health():
 @app.get("/api/cases")
 def demo_cases():
     return CASES
+
+
+@app.get("/api/ontology")
+def ontology():
+    return ontology_schema()
+
+
+@app.get("/api/explorer/{case_id}")
+def graph_explorer(case_id: str, variant: Variant = "valid", query: Query = "transactions"):
+    try:
+        return explore(case_id, variant, query)
+    except KeyError:
+        raise HTTPException(404, "Unknown case") from None
 
 
 @app.post("/api/investigate")
@@ -207,6 +221,8 @@ def static_asset(asset: str):
         "app.js",
         "style.css",
         "research.json",
+        "guide.json",
+        "lab.js",
         "architecture.svg",
         "docs/FinGraph_Research_and_Architecture.html",
     }

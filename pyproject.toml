@@ -3,6 +3,18 @@ name = "fingraph-investigations"
 version = "0.3.0"
 description = "Evidence-based financial crime investigation research platform"
 requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.121.3",
+  "uvicorn==0.38.0",
+  "rdflib==7.5.0",
+  "pyshacl==0.30.1",
+  "langgraph==1.0.3",
+  "SQLAlchemy==2.1.9",
+  "PyJWT[crypto]==2.13.0",
+]
+
+[tool.uv]
+package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

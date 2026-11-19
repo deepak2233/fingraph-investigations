@@ -71,3 +71,13 @@ def test_explanations_reconstruct_linear_prediction_and_metrics_conserve_counts(
             for budget in data["review_budgets"]:
                 assert budget["true_positives"] + budget["false_positives"] == budget["reviewed"]
                 assert budget["true_positives"] + budget["missed"] == data["positives"]
+
+
+def test_hosted_manifest_declares_the_runtime_dependencies():
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text())
+    runtime = set((root / "requirements.txt").read_text().splitlines())
+    assert set(project["project"]["dependencies"]) == runtime

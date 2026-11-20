@@ -29,7 +29,7 @@ A production programme would measure analyst time, unsupported statements, evide
 | Model pipeline | Dataset preparation, temporal snapshots, training, evaluation, JSON exports | `ml/prepare.py`, `ml/train.py` |
 | Workbench | Investigation view, model comparison, inference, authenticated service controls | `index.html`, `app.js` |
 
-The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Integrating a continuously refreshed bank feature store and trained score into the investigation policy is a subsequent institutional deployment decision.
+The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Candidate selection and case prioritisation use fixed rules. An institutional detection release requires point-in-time features, recorded eligibility and ranking decisions, and case-level evaluation against the existing alert queue.
 
 ## 3. Source contracts and candidate generation
 
@@ -203,7 +203,7 @@ The most material extensions are full-history graph features, independent tempor
 
 ## 16. Research register
 
-The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.
+The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, the Graph Feature Preprocessor, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.
 
 <!-- PAPER_REGISTER -->
 

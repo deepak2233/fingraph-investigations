@@ -193,27 +193,35 @@ def screening_agent(s):
 def ownership_agent(s):
     g = graph_for(s["case"])
     query = """PREFIX fg: <https://fingraph.example/ontology/>
-    SELECT ?account ?owner ?claim ?evidence WHERE {
+    SELECT ?account ?entity ?owner ?claim ?evidence ?source ?observed WHERE {
       ?account a fg:Account ; fg:heldBy ?entity .
       ?claim a fg:OwnershipAssertion ; fg:ownedEntity ?entity ; fg:owner ?owner ; fg:supportedBy ?evidence .
-    } ORDER BY ?account"""
+      ?evidence fg:sourceId ?source ; fg:occurredAt ?observed .
+    } ORDER BY ?account ?claim"""
     rows = [
-        {k: str(row[k]).rsplit("/", 1)[-1] for k in ["account", "owner", "claim", "evidence"]}
+        {
+            **{
+                key: str(row[key]).rsplit("/", 1)[-1]
+                for key in ["account", "entity", "owner", "claim", "evidence"]
+            },
+            "source": str(row.source),
+            "observed_at": str(row.observed),
+        }
         for row in g.query(query)
     ]
     relevant = {t[k] for t in s["case"]["transactions"] for k in ("sender", "receiver")}
     missing = sorted(relevant - {r["account"] for r in rows})
-    owners = defaultdict(list)
+    owners = defaultdict(set)
     for r in rows:
         if r["account"] in relevant:
-            owners[r["owner"]].append(r["account"])
-    shared = [{"owner": p, "accounts": a} for p, a in owners.items() if len(a) > 1]
+            owners[r["owner"]].add(r["account"])
+    shared = [{"owner": p, "accounts": sorted(a)} for p, a in owners.items() if len(a) > 1]
     return {
         "ownership": {
             "assertions": rows,
             "missing": missing,
             "shared": shared,
-            "scope": "Direct synthetic registry assertions only; not a legal UBO determination",
+            "scope": "Direct source-backed ownership assertions",
         },
         "trace": trace(
             s,
@@ -233,20 +241,20 @@ def evidence_agent(s):
         }
         for t in s["case"]["transactions"]
     ]
-    evidence += [
-        {
-            "id": r["evidence"],
-            "source": next(
-                a["ownership_source"] for a in s["case"]["accounts"] if a["id"] == r["account"]
-            ),
+    # One claim can apply to several accounts held by the same legal entity.
+    ownership_evidence = {
+        row["evidence"]: {
+            "id": row["evidence"],
+            "source": row["source"],
             "kind": "ownership",
-            "text": f"{r['account']} has a direct owner assertion for {r['owner']}.",
+            "text": f"{row['owner']} is listed as a direct owner of {row['entity']}.",
         }
-        for r in s["ownership"]["assertions"]
-    ]
+        for row in s["ownership"]["assertions"]
+    }
+    evidence.extend(ownership_evidence.values())
     return {
         "evidence": evidence,
-        "trace": trace(s, "Evidence", f"{len(evidence)} immutable fixture references collected"),
+        "trace": trace(s, "Evidence", f"{len(evidence)} source references collected"),
     }
 
 

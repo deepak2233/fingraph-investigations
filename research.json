@@ -180,10 +180,10 @@
     "year": 2024,
     "category": "Graph features",
     "url": "https://research.ibm.com/publications/graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection",
-    "finding": "Extracts transaction graph patterns for downstream tree models.",
-    "implication": "Compare graph-derived tabular features with neural message passing.",
-    "limit": "Published throughput belongs to that implementation and benchmark.",
-    "review_depth": "Primary-source abstract",
+    "finding": "Extracts temporal graph motifs and account statistics for tree models. The authors compare basic and enriched features on chronological holdouts.",
+    "implication": "Test graph features with boosting first and match feature visibility to the decision time.",
+    "limit": "Batch size changes how much context is visible. Published F1 and throughput apply to that benchmark and deployment setting.",
+    "review_depth": "Methods, experimental setup and results",
     "id": "P17"
   },
   {

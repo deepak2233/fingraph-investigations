@@ -1,8 +1,8 @@
 # FinGraph research and system architecture
 
-Deepak Yadav · Personal engineering project · Version 0.2 · 18 November 2026
+Deepak Yadav · Personal engineering project
 
-FinGraph turns a bounded transaction snapshot into an investigation with traceable observations, ownership evidence, and a recorded human review. The repository implements candidate generation, Kafka intake, semantic validation, a five-stage LangGraph workflow, durable SQL records, a retryable graph projection, three trained model baselines, and an inference workbench. The public Vercel app runs synthetic scenarios and benchmark inference. The private service stack runs with PostgreSQL, Kafka, and an OIDC provider.
+FinGraph turns a bounded transaction snapshot into an investigation with traceable observations, ownership evidence, and a recorded human review. The public Vercel app runs synthetic cases and model inference. The private service supports durable SQL review and Kafka intake. An offline benchmark on IBM AMLworld replays a full ledger, evaluates case ranking, and exercises the handoff from the model to the investigation service.
 
 ## 1. The user and the decision
 
@@ -26,10 +26,15 @@ A production programme would measure analyst time, unsupported statements, evide
 | SQL ledger | Event deduplication, cases, review requests, audit chain, projection outbox, quarantine | `pipeline/store.py` |
 | Graph projector | Poll the committed outbox and write a deterministic tenant-specific graph | `python -m pipeline.projector` |
 | Private API | OIDC authentication, roles, tenant scoping, versioned review | `api/index.py` |
-| Model pipeline | Dataset preparation, temporal snapshots, training, evaluation, JSON exports | `ml/prepare.py`, `ml/train.py` |
-| Workbench | Investigation view, model comparison, inference, authenticated service controls | `index.html`, `app.js` |
+| Sampled model pipeline | Dataset preparation, frozen graph snapshots, evaluation, and packaged inference heads | `ml/prepare.py`, `ml/train.py`, `ml/inference.py` |
+| Full-history benchmark | Event-minute features, held-out sender-day ranking, SQLite handoff and evidence checks | `ml/rolling_features.py`, `ml/rolling_benchmark.py` |
+| Workbench | Live RDF and synthetic investigations, sampled model inference, full-history results, and private service controls | `index.html`, `app.js`, `lab.js` |
 
-The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Candidate selection and case prioritisation use fixed rules. An institutional detection release requires point-in-time features, recorded eligibility and ranking decisions, and case-level evaluation against the existing alert queue.
+| Path | Inputs and execution | Output and boundary |
+|---|---|---|
+| Public Vercel workbench | Five authored synthetic cases and exported held-out examples. FastAPI runs RDF mapping, SHACL, SPARQL, deterministic agents, or model inference on request. | Interactive evidence and sample scores. Public demo reviews are session-local. The app labels loaded published examples. |
+| Durable case service | Bounded ledger snapshot, two candidate rules, Kafka or authenticated HTTP intake, SHACL and investigation, then SQL commit. | Versioned cases, audit and outbox. An independent worker projects RDF. Local Kafka and PostgreSQL are covered in CI. The Neptune transport is mock-tested. |
+| Offline AMLworld replay | Complete chronological ledger, rolling behavior and directed network features, validation-selected boosting model, then sender-day grouping. | Held-out comparisons and three model-ranked drafts through the same investigation service in isolated SQLite. There is no deployed rolling scorer or live ML case queue. |
 
 ## 3. Source contracts and candidate generation
 
@@ -53,6 +58,8 @@ Each case event carries a schema version, tenant ID, immutable event ID, receive
 | Investigation | Frozen input, output, version, review state | The unit of analyst work |
 
 RDF identifiers preserve source relationships. OWL supplies the vocabulary and class semantics. SHACL verifies required properties and datatypes. SPARQL retrieves direct ownership records. The current implementation runs RDFS closure for validation. Full OWL DL reasoning and legal beneficial-owner determination require further components and rules. [W3C OWL 2](https://www.w3.org/TR/owl2-overview/), [SHACL](https://www.w3.org/TR/shacl/), [SPARQL](https://www.w3.org/TR/sparql11-query/)
+
+The identity shape rejects an RDF node mapped as more than one of account, transfer, party, ownership assertion, or evidence. A collision now fails new case intake before SQL persistence or graph projection. Source identifiers and fixture links retain their existing mapping. Tenant- and source-qualified identity and reconciliation of previously persisted graphs require an explicit migration.
 
 FIBO provides a relevant financial vocabulary for a future mapping. FinGraph uses its own compact namespace so the actual scope can be inspected. Any FIBO mapping should have competency questions, versioned alignments, and reviewed equivalence statements. PROV-O supplies a standard foundation for richer entity, activity, and agent provenance. [FIBO](https://edmcouncil.org/frameworks/industry-models/fibo/), [PROV-O](https://www.w3.org/TR/prov-o/)
 
@@ -112,6 +119,7 @@ All read and review operations scope data using the tenant from the verified tok
 |---|---|---|
 | `GET /api/health` | Public | Runtime and integration status |
 | `GET /api/cases` | Public | Authored synthetic investigation cases |
+| `GET /api/explorer?case_id=…` | Public fixed ID and template | Build RDF, run SHACL, and execute the chosen SPARQL template |
 | `POST /api/investigate` | Public fixed ID | Execute an investigation demonstration |
 | `GET /api/model/evaluation` | Public | Dataset and measured model metrics |
 | `POST /api/model/score` | Public fixed ID | Compute scores for a held-out example |
@@ -122,17 +130,19 @@ All read and review operations scope data using the tenant from the verified tok
 
 Private routes fail closed when authentication or database configuration is absent. Static file serving uses an allowlist. The Vercel configuration adds content-type, referrer, and content-security headers. Per-user rate limiting, enterprise identity integration, field redaction, key rotation procedures, retention enforcement, and a penetration test remain deployment work.
 
+The RDF explorer retries the same fixed-case exercise through the Vercel function entry if its named route returns 404. The interface identifies a saved example if live execution is unavailable. The original `/api/explorer/{case_id}` route remains supported.
+
 ## 10. Data provenance and sampling
 
 The model source is IBM AMLworld HI-Small, retrieved from the official Kaggle dataset endpoint linked by IBM. The source contains 5,078,345 transactions, including 5,177 synthetic laundering labels. Its SHA-256 is `b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040`. The importer rejects a different checksum or schema. [IBM dataset repository](https://github.com/IBM/AML-Data)
 
-A Bernoulli sample selects 5% of rows using seed 42 before using labels. It contains 253,980 transactions and 267 positive labels. This selection preserves an approximate natural class imbalance but removes transaction neighbors and can break motifs. Graph results therefore describe the sampled graph. The preparation command accepts a larger fraction for further experiments. The complete source CSV is excluded from the repository.
+The original inference benchmark uses a Bernoulli sample of 5% of rows, selected using seed 42 before using labels. It contains 253,980 transactions and 267 positive labels. This selection removes transaction neighbors and can break motifs. The rolling benchmark in Section 13 uses the original ledger in full. The complete source CSV is excluded from the repository.
 
 Account identifiers combine bank ID and account number. This avoids merging distinct accounts with identical local account numbers. The duplicate `Account` CSV headings are validated explicitly. Currency and payment-format vocabularies are fitted from the training period, and unseen values have an unknown category. Source timestamps lack an explicit zone, so benchmark ordering treats them as UTC.
 
 IBM publishes the dataset under CDLA-Sharing-1.0, separately from the repository's software license. The exported inference examples contain a small derivative subset and retain the source attribution and sharing license. [Dataset license information](https://github.com/IBM/AML-Data/blob/main/README.md)
 
-## 11. Temporal model experiment
+## 11. Sampled model experiment
 
 | Partition | Transaction time | Graph visible to the model |
 |---|---|---|
@@ -151,7 +161,7 @@ Logistic regression and histogram gradient boosting receive the same transaction
 
 The JSON artifacts include model weights, thresholds, feature names, scaler values, dataset hashes, split boundaries, software versions, and measured metrics. The server computes logistic, tree, and GNN edge-head scores without loading pickle files. Tests compare the exported predictions with training-runtime reference predictions.
 
-## 12. Measured results
+## 12. Sampled benchmark results
 
 The test partition contains 43,126 transactions, with 74 positives and a prevalence of 0.1716%. Values below come from the checked-in `artifacts/evaluation.json`.
 
@@ -163,11 +173,28 @@ The test partition contains 43,126 transactions, with 74 positives and a prevale
 
 Gradient boosting leads on validation average precision and on the recorded test comparison. The GNN underperforms both tabular baselines on test average precision. This result supports improving graph coverage, causal features, and evaluation before adding architectural complexity. The model scores remain uncalibrated. Brier scores and the validation-selected thresholds are available in the machine-readable report.
 
-The result has substantial limits. It covers one sample, one seed, a small number of positives, and a single synthetic source. Confidence intervals, independent temporal windows, unsampled history, model calibration, cross-bank transfer, and operational analyst outcomes remain unmeasured. A high ROC AUC can coexist with a low proportion of relevant alerts under this class imbalance, so the UI reports review-budget precision and recall alongside it.
+The sampled result covers one seed, one holdout, a small number of positives, and a single synthetic source. A high ROC AUC can coexist with a low proportion of relevant alerts under this class imbalance. Model Lab reports review-budget precision and recall, and reports the subsequent full-history experiment separately.
 
 The inference cards deliberately include high-score examples, positive-label examples, and evenly spaced test examples. They illustrate behavior. Dataset-wide evaluation uses every row in the held-out partition. GNN embeddings on those cards were computed before the test cutoff, and the edge head runs on each API request.
 
-## 13. Failure behavior
+## 13. Full-history replay and case ranking
+
+The benchmark replays all 5,078,345 transfers. Features for a transfer use past event minutes, exclude self-transfers from history, and batch simultaneous transfers to prevent same-minute leakage. The behavior model uses rolling debit and credit counts, a same-currency ratio, and recent inflow coverage. The graph-feature model adds unique beneficiaries, unique originators, directed-pair novelty, and prior reverse-edge activity. These features come from the directed transaction ledger. The RDF evidence graph supports validation and investigation after selection. Verified ownership is absent from the benchmark input.
+
+Both folds use the same four model arms, the same eligible population per fold, and a fixed review budget of 100 sender-day groups. The group score is its maximum transfer score. The reference label is positive if at least one outgoing transfer that day has a positive simulator label. The model with the highest validation average precision at the sender-day level supplies the handoff.
+
+| Model | 7–8 September 2022 positives in top 100 | 9–10 September 2022 positives in top 100 |
+|---|---:|---:|
+| Transaction-only logistic regression | 4 | 1 |
+| Transaction-only gradient boosting | 9 | 2 |
+| Gradient boosting with behavior | 70 | 67 |
+| Gradient boosting with behavior and directed graph features | 90 | 87 |
+
+Validation selected the graph-feature model in both folds. At this budget it retrieved 90 of 788 and 87 of 754 positive groups, with **11.4% and 11.5% recall**. The graph feature group added 20 positive groups per window over behavior-only boosting. The two windows share the same simulator. They leave open live data availability, analyst-confirmed case quality, calibration, and whether a full-history GNN would improve the ranking.
+
+The three highest-ranked groups from the final fold entered `InvestigationService` in a separate in-memory SQLite database. Their 21 source transfers were retained in the evidence registers. All three passed SHACL, reached `awaiting_analyst_review`, and had one creation audit record each after identical event replay. This verifies a bounded handoff and source provenance. The durable candidate builder and the Vercel fixture queue remain rule-based. [Benchmark design and reproduction](https://github.com/deepak2233/fingraph-investigations/blob/main/docs/ROLLING_BENCHMARK.md)
+
+## 14. Failure behavior
 
 | Failure | Implemented response | Verification |
 |---|---|---|
@@ -185,32 +212,39 @@ The inference cards deliberately include high-score examples, positive-label exa
 | Model export changes numerics | Fail prediction-parity test | Inference artifact test |
 | Live screening unavailable | Keep an explicit gap in the draft | Existing investigation test |
 
-## 14. Deployment and CI
+## 15. Deployment and CI
 
-The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. Connecting the Pipeline tab to the private API requires the service configuration in the [runbook](RUNBOOK.md). [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)
+The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. Connecting the Pipeline tab to the private API requires the service configuration in the runbook. [Runbook](https://github.com/deepak2233/fingraph-investigations/blob/main/docs/RUNBOOK.md) · [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)
 
 The `CI` workflow checks code and regenerated demo assets. A separate job starts PostgreSQL, Kafka and intake with projection offline, then confirms five committed cases, pending outbox rows and broker acknowledgements. It starts the projector, checks the files and an idempotent review, and uses committed Kafka offsets to verify that the worker consumed the replay batch after a restart.
 
-The benchmark workflow downloads the checksum-verified source, prepares the sample, trains all three models, and uploads the JSON artifacts. It runs on manual dispatch so ordinary code pushes avoid repeated dataset downloads. The deployment workflow reruns verification before using configured Vercel credentials. Its required GitHub secret and variables are documented explicitly. The current deployment can also be published through the connected Vercel account.
+The manual benchmark workflow verifies the dataset digest, trains the sampled models, runs the full-history benchmark, and uploads the JSON artifacts. The manual deployment workflow reruns tests before publishing to Vercel, then smoke-tests the public origin. A release can also be published through Vercel from a specific commit. Verify the production deployment commit and health version after either release path.
 
-## 15. Operational acceptance before bank use
+## 16. Operational acceptance before bank use
 
 A bank deployment needs a named owner for source contracts, identity resolution, data retention, screening policy, model validation, incident response, and reviewer authorization. The workflow should be exercised against approved data with the actual tenant and identity configuration. Production targets for throughput, latency, recovery time, recovery point, and alert capacity need to be established with workload measurements.
 
 Review objectives should include missing-evidence recall, false-positive workload, model drift by customer cohort and payment type, stale ownership and screening data, rejected-schema rate, Kafka lag, outbox delay, review conflicts, and audit completeness. Benchmark accuracy alone cannot establish operational suitability.
 
-The most material extensions are full-history graph features, independent temporal evaluation, a live screening adapter with source-freshness controls, institution-approved ownership logic, persistent document evidence, and measured analyst evaluation. Those extensions should have explicit acceptance tests and a deployment-specific threat model.
+| Review finding | Implemented evidence | Open requirement |
+|---|---|---|
+| Ranking and investigations were disconnected | Three model-ranked cases completed offline intake, evidence validation, and replay checks. | Build a live feature and ranking service with recorded decisions, queue capacity, and approved fallbacks. |
+| Rules cover two motifs and limited customer context | The offline model uses rolling behavior and directed relationships. The operational builder still checks fan-out and three-account cycles. | Add typology-specific coverage tests, verified purpose and peer context, and legitimate payroll controls. |
+| Sampled graph coverage and high alert workload | The rolling test uses full event history and improves top-100 yield on both holdouts. | Evaluate recall at feasible review budgets on bank-visible data. A full-history GNN comparison remains open. |
+| Knowledge graph use in risk prediction | Directed ledger features drive the offline ranking. RDF supports validation and investigation. | Test incremental ranking value from verified ownership or independently sourced risk facts at the relevant decision time. |
+| Live inputs and identity resolution | Source contracts preserve source IDs. Colliding resource types now fail SHACL on new intake. | Integrate approved bank, KYC, and sanctions feeds. Resolve identities with versioned provenance and reconcile legacy graphs. |
+| Case-level value and scale | Synthetic sender-day metrics, bounded shadow drafts, and local integration tests. | Compare against incumbent alerts and analyst decisions. Link related activity across overlapping lookback windows, and measure workload, throughput, and recovery at institutional volumes. |
 
-## 16. Research register
+## 17. Research register
 
 The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, the Graph Feature Preprocessor, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.
 
 <!-- PAPER_REGISTER -->
 
 
-## 17. Interactive exercise and interpretation
+## 18. Interactive exercise and interpretation
 
-The expanded application provides the actual source tables, RDF instances, a navigable neighbourhood graph, allowlisted SPARQL results and live invalid-graph exercises. Its evaluation views are generated from the same stored artifact as the metrics below.
+The application provides source tables, RDF instances, a navigable neighbourhood graph, allowlisted SPARQL results and live invalid-graph exercises. Model Lab displays the full-history comparison and the sampled benchmark below from separate stored artifacts.
 
 | Model | Validation AP | Test AP | Test ROC AUC | Precision at top 1% | Recall at top 1% |
 |---|---:|---:|---:|---:|---:|
@@ -232,11 +266,11 @@ Data engineering supplies resolved account and party IDs. The worker validates a
 
 ### What is active today
 
-The public app executes RDF construction, SHACL validation, bounded SPARQL queries, five deterministic LangGraph steps and inference for three trained models. PostgreSQL/Kafka integration runs in GitHub CI and the local Docker stack. AWS Neptune is an implemented transport adapter tested with a mock endpoint. Live screening, bank feeds and a production identity provider are not connected.
+The public app executes RDF construction, SHACL validation, bounded SPARQL queries, five deterministic LangGraph steps and inference for three sampled models. It displays the full-history case comparison and offline handoff results. PostgreSQL/Kafka integration runs in GitHub CI and the local Docker stack. The Neptune transport has mock coverage. Live screening, bank feeds and a production identity provider are pending integrations.
 
 ### Why combine semantics and machine learning?
 
-The ontology defines what a transfer, holder and ownership assertion mean. SHACL blocks malformed evidence. Rules explain specific temporal motifs. ML ranks examples by statistical patterns. SQL records workflow state and decisions. These responsibilities complement one another, but the current GNN benchmark is a separate experiment: no measured accuracy improvement from the ontology or agent workflow is claimed.
+The ontology defines transfers, holders, and ownership assertions. SHACL blocks malformed evidence. Rules explain specific temporal motifs. The offline model ranks examples using ledger-derived features. The investigation service receives selected cases and SQL records workflow state. The experiment measures the ranking benefit of directed transaction features. It leaves the effect of ontology features on ranking unmeasured.
 
 ### A worked investigation
 
@@ -334,7 +368,7 @@ Add schema migrations, SQL tenant isolation controls, Kafka TLS/SASL, bounded wo
 
 ### P1 · Improve the model experiment
 
-Train on a full graph or preserve complete temporal neighbourhoods; run multiple seeds and rolling holdouts; compare retrained graph/no-graph ablations and tune with equal budgets. Acceptance: report distributions and confidence intervals for average precision and recall at the same review budget. Promote a GNN only if that evidence beats the tabular baseline.
+The full-history rolling replay establishes a tabular baseline across two non-overlapping test windows. The next experiments should quantify uncertainty across independent data and compare a full-neighborhood GNN against the same boosted trees with matched features, splits, and review budgets.
 
 ### P1 · Calibrate and challenge the decision policy
 

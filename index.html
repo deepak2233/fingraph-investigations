@@ -8,9 +8,9 @@
       content="FinGraph financial crime investigation research workbench. Explore evidence-backed graph signals and an ontology-driven architecture using synthetic examples."
     />
     <title>FinGraph | Investigation Workbench</title>
-    <link rel="stylesheet" href="/style.css?v=0.4.3" />
-    <script src="/app.js?v=0.4.3" defer></script>
-    <script src="/lab.js?v=0.4.3" defer></script>
+    <link rel="stylesheet" href="/style.css?v=0.4.4" />
+    <script src="/app.js?v=0.4.4" defer></script>
+    <script src="/lab.js?v=0.4.4" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -40,7 +40,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="avatar">DY</div>
-        <div>Deepak Yadav<small>Research project · v0.4.3</small></div>
+        <div>Deepak Yadav<small>Research project · v0.4.4</small></div>
       </div>
     </aside>
     <div class="shell">
@@ -343,25 +343,50 @@
         </section>
         <section id="models" class="view hidden">
           <div class="section-intro">
-            <h2>Measure before choosing a model.</h2>
+            <h2>Model evaluation and inference</h2>
             <p>
-              One temporal holdout. Three approaches. Inspect the measured
-              results, then run inference on a held-out transaction.
+              Compare case ranking on two full-history holdouts, then try the
+              three models from the original sampled benchmark on a held-out
+              transfer.
             </p>
             <button type="button" class="text-link" id="try-inference">Try a held-out transaction ↘</button>
           </div>
+          <section class="panel padded" aria-labelledby="rolling-heading">
+            <h3 id="rolling-heading">Full-history case ranking</h3>
+            <p id="rolling-summary"></p>
+            <label for="rolling-fold">Held-out window (UTC)</label>
+            <select id="rolling-fold" aria-controls="rolling-results"></select>
+            <div id="rolling-results" aria-live="polite">
+              <div class="table-scroll" id="rolling-table"></div>
+              <p id="rolling-conclusion"></p>
+            </div>
+            <p class="muted">
+              Each sender-day is ranked by its highest transfer score. A group
+              counts as positive if at least one outgoing transfer has a
+              simulator label. The comparison uses prior event minutes; the
+              two windows share one synthetic source.
+            </p>
+            <details>
+              <summary>From model-ranked cases to investigation drafts</summary>
+              <p>
+                The three highest-ranked sender-days from the final fold went
+                through the investigation service in an isolated SQLite run.
+                The public investigation queue still uses five authored fixtures.
+              </p>
+              <div class="table-scroll" id="rolling-handoff"></div>
+            </details>
+          </section>
           <div id="model-summary" class="stats"></div>
           <div class="panel padded decision-banner">
-            <h3>Active benchmark leader: gradient boosting</h3>
+            <h3>Sampled benchmark leader · gradient boosting</h3>
             <p>
-              Selected by validation average precision. All three trained models
-              are available for live inference below. Investigation scenarios
-              use explicit rules; ML scores do not determine their case
-              outcomes.
+              Validation average precision selected gradient boosting in the
+              original 5% benchmark. The three trained models below score
+              exported examples from that experiment.
             </p>
           </div>
           <div class="panel padded">
-            <h3>Held-out benchmark</h3>
+            <h3>Original 5% benchmark</h3>
             <p class="muted">
               Average precision reflects ranking across thresholds.
               Review-budget metrics evaluate the highest-scoring 1% of
@@ -554,12 +579,11 @@
         </section>
         <section id="architecture" class="view hidden">
           <div class="section-intro">
-            <h2>Three planes. One evidence contract.</h2>
+            <h2>Implemented architecture</h2>
             <p>
-              The public workbench runs synthetic investigations and model
-              inference. The repository includes a separate Kafka worker, SQL
-              case ledger, authenticated review API, and Neptune projection
-              adapter.
+              The hosted workbench, durable case service, and offline benchmark
+              run with different inputs. The benchmark reuses the investigation
+              service to test the model-to-case handoff.
             </p>
           </div>
           <p>
@@ -573,37 +597,41 @@
           <div class="panel architecture-image">
             <img
               src="/architecture.svg"
-              alt="Architecture showing ingestion and validation, graph storage, five specialist workflow and analyst review, with an offline model training plane"
+              alt="Architecture showing the Vercel workbench, durable Kafka and SQL intake, and the offline full-history ranking and case handoff"
             />
           </div>
           <div class="info-grid">
             <article class="panel">
-              <h3>Implemented here</h3>
+              <h3>Hosted workbench</h3>
               <p>
-                FastAPI, RDFLib, pySHACL, bounded SPARQL templates, five
-                deterministic LangGraph nodes, evidence-linked drafts, trained
-                model inference, and a durable service API.
+                Five synthetic cases run through live RDF, SHACL, allowlisted
+                SPARQL and deterministic LangGraph investigation. Model Lab
+                scores fixed examples from the original sampled experiment.
               </p>
             </article>
             <article class="panel">
-              <h3>Backend services</h3>
+              <h3>Durable case service</h3>
               <p>
-                Kafka intake, transactional SQL storage, retryable RDF
-                projection, and authenticated review. Docker Compose runs the
-                local stack. Connecting the Neptune adapter requires an AWS
-                environment.
+                Two bounded rules produce candidate events. Kafka intake commits
+                SQL cases, audit and outbox before acknowledging events. OIDC
+                gates private review. The independent projector writes local RDF
+                or uses the mock-tested Neptune adapter.
               </p>
             </article>
             <article class="panel">
-              <h3>Hosting boundary</h3>
+              <h3>Offline ranking and handoff</h3>
               <p>
-                Vercel serves this workbench and short Python requests.
-                Long-lived Kafka consumers, Neptune private-network access,
-                model training, and durable workers belong in a separate backend
-                environment.
+                Full event-time replay builds behavior and directed graph
+                features. The selected model ranks sender-days and sends three
+                synthetic cases to the same investigation service in SQLite.
+                That comparison is published in Model Lab.
               </p>
             </article>
           </div>
+          <p class="muted">
+            Live model-driven queuing, verified identity resolution, approved
+            screening feeds, and bank-volume performance tests remain open.
+          </p>
         </section>
         <section id="ontology" class="view hidden">
           <div class="section-intro">

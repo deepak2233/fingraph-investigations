@@ -62,15 +62,16 @@ async function loadExplorer(preferPublished = false) {
     ? "Loading the published graph…"
     : "Building RDF and running SHACL…";
   try {
-    const params = new URLSearchParams({ variant, query });
+    const params = new URLSearchParams({ action: "rdf-explorer", case_id: source.id, variant, query });
     const response = await demoAction(
-      `/api/explorer/${encodeURIComponent(source.id)}?${params}`,
+      `/api/explorer?${params}`,
       {},
       async () => {
         const { graph, queries } = (await snapshot(source.id)).variants[variant];
         return { ...graph, source, query: queries[query] };
       },
       preferPublished,
+      `/api/index.py?${params}`,
     );
     if (requestId !== explorerRequest) return;
     const focus = explored?.case_id === source.id ? $("rdf-focus").value : evidenceLink.get("resource");
@@ -242,6 +243,57 @@ function renderRdfFocus() {
     });
   });
 }
+function renderRollingBenchmark(report) {
+  const labels = {
+    logistic_transaction: "Logistic regression · transaction fields",
+    boosting_transaction: "Gradient boosting · transaction fields",
+    boosting_behavior: "Gradient boosting · account behavior",
+    boosting_graph: "Gradient boosting · account behavior and graph",
+  };
+  $("rolling-summary").textContent =
+    `${report.source_rows.toLocaleString()} ${report.source} transfers were replayed in event-time order. ` +
+    `The table reports each model at the same budget of ${report.case_budget} sender-days per window.`;
+  const selector = $("rolling-fold");
+  const dates = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+  });
+  selector.innerHTML = report.folds.map(({ boundaries_utc: boundaries }, index) => {
+    const [start, end] = boundaries.slice(-2);
+    const label = dates.formatRange(new Date(start), new Date(Date.parse(end) - 1));
+    return `<option value="${index}">${esc(label)}</option>`;
+  }).join("");
+  const renderFold = () => {
+    const { models, selected_on_validation_case_average_precision: selected } =
+      report.folds[Number(selector.value)];
+    $("rolling-table").innerHTML = table(
+      ["Model", "Positives found", "Precision", "Recall", "Positives missed", "Average precision"],
+      Object.entries(labels).map(([id, label]) => {
+        const result = models[id].test.account_days;
+        return [
+          label, result.positives_found, percent(result.precision), percent(result.recall),
+          result.positives_missed, result.average_precision.toFixed(4),
+        ];
+      }),
+    );
+    const { positives_found: found, positive_labels: total, recall } = models[selected].test.account_days;
+    const added = models.boosting_graph.test.account_days.positives_found -
+      models.boosting_behavior.test.account_days.positives_found;
+    $("rolling-conclusion").textContent =
+      `Validation selected ${labels[selected]}. It found ${found} of ${total} labelled positive sender-days (${percent(recall)} recall). ` +
+      `Adding directed graph features to the behavior model changed the top-${report.case_budget} yield by ${added} positive groups.`;
+  };
+  selector.onchange = renderFold;
+  renderFold();
+  $("rolling-handoff").innerHTML = table(
+    ["Case", "Anchor source row", "Transfers with evidence", "SHACL", "Audit records after replay", "Status"],
+    report.folds.flatMap((fold) => fold.shadow_handoff ?? []).map((item) => [
+      item.case_id, item.anchor_source_row, `${item.evidence_transfers} / ${item.account_day_transfers}`,
+      item.shacl_conforms ? "Conforms" : "Blocked", item.audit_records_after_replay,
+      item.status.replaceAll("_", " "),
+    ]),
+  );
+}
+
 function renderEvaluation() {
   if (!evaluationReport) return;
   const modelEntries = Object.entries(evaluationReport.models);
@@ -458,6 +510,7 @@ async function startWorkbench() {
     const caseId = evidenceLink.get("case");
     if (cases.some((item) => item.id === caseId)) $("data-case").value = caseId;
     $("load-graph").disabled = false;
+    renderRollingBenchmark(catalog.rolling_benchmark);
     renderEvaluation();
     startup.textContent = "";
     if (!$("data").classList.contains("hidden")) await loadExplorer(true);

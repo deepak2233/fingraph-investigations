@@ -14,11 +14,11 @@
     },
     {
       "title": "What is active today",
-      "text": "The public app executes RDF construction, SHACL validation, bounded SPARQL queries, five deterministic LangGraph steps and inference for three trained models. PostgreSQL/Kafka integration runs in GitHub CI and the local Docker stack. AWS Neptune is an implemented transport adapter tested with a mock endpoint. Live screening, bank feeds and a production identity provider are not connected."
+      "text": "The public app executes RDF construction, SHACL validation, bounded SPARQL queries, five deterministic LangGraph steps and inference for three sampled models. Model Lab also shows the full-history case ranking and three offline handoffs. The local Docker stack exercises Kafka and PostgreSQL in CI. The Neptune transport is mock-tested. Live bank, screening, and identity integrations remain open."
     },
     {
       "title": "Why combine semantics and machine learning?",
-      "text": "The ontology defines what a transfer, holder and ownership assertion mean. SHACL blocks malformed evidence. Rules explain specific temporal motifs. ML ranks examples by statistical patterns. SQL records workflow state and decisions. These responsibilities complement one another, but the current GNN benchmark is a separate experiment: no measured accuracy improvement from the ontology or agent workflow is claimed."
+      "text": "The ontology defines transfers, holders, and ownership assertions. SHACL blocks malformed evidence and RDF resources with incompatible roles. In the offline benchmark, ledger-derived features rank sender-days and the investigation service drafts evidence for the selected cases. The ranking comparison measures directed transaction features. The effect of verified ownership on ranking remains unmeasured."
     },
     {
       "title": "A worked investigation",
@@ -122,7 +122,7 @@
     },
     {
       "title": "P1 \u00b7 Improve the model experiment",
-      "text": "Train on a full graph or preserve complete temporal neighbourhoods; run multiple seeds and rolling holdouts; compare retrained graph/no-graph ablations and tune with equal budgets. Acceptance: report distributions and confidence intervals for average precision and recall at the same review budget. Promote a GNN only if that evidence beats the tabular baseline."
+      "text": "The full-history replay compares four model arms across two temporal holdouts on one simulator. For the next comparison, preserve full GNN neighborhoods, match the feature and review budgets, and report uncertainty across independent data. Measure recall and average precision at the same review capacity."
     },
     {
       "title": "P1 \u00b7 Calibrate and challenge the decision policy",

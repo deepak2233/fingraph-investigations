@@ -4,7 +4,7 @@ FinGraph is an investigation workbench for anti-money laundering (AML) teams. Gi
 
 [Live demo](https://fingraph-investigations.vercel.app/) · [Architecture](docs/ARCHITECTURE.md) · [Runbook](docs/RUNBOOK.md) · [CI](https://github.com/deepak2233/fingraph-investigations/actions/workflows/ci.yml)
 
-This is a personal research project. The public demo uses synthetic data. The Docker stack demonstrates durable case storage and review. The public workbench has rule-based investigations and a separate inference lab. The rolling benchmark connects offline model ranking to the existing investigation service for synthetic account-day cases. [Production readiness review and pilot gates](docs/PRODUCTION_READINESS.md) · [Rolling benchmark](docs/ROLLING_BENCHMARK.md)
+This is a personal research project. The public workbench runs synthetic rule-based investigations and sampled model inference. Model Lab displays the full-history comparison and the offline investigation handoff. The Docker stack demonstrates durable case storage and review. [Production readiness review and pilot gates](docs/PRODUCTION_READINESS.md) · [Rolling benchmark](docs/ROLLING_BENCHMARK.md)
 
 ## Where it fits
 
@@ -48,7 +48,7 @@ flowchart TD
 | **4. Persistence and replay** | PostgreSQL commits the case, audit record, and RDF outbox together. The worker commits the Kafka offset after the case or quarantine commits. Replaying an identical event returns its existing case. | [SQL store](pipeline/store.py) |
 | **5. Projection and review** | A separate projector writes RDF while the analyst accesses the saved case through FastAPI. OIDC authenticates the reviewer, and a version check prevents conflicting reviews. Projection can recover from its backlog without blocking intake. | [Projector](pipeline/projector.py) · [API](api/index.py) |
 
-The **public demo** runs bounded scenario, validation, and scoring APIs on Vercel. Its review is session-only. Run the **Docker stack** for Kafka, PostgreSQL, and the independent projector. Neptune transport is tested against a mock endpoint. Local integration writes N-Triples files. [Architecture and API contracts](docs/ARCHITECTURE.md) · [Configuration](.env.example)
+The **public demo** runs bounded scenario, validation, and scoring APIs on Vercel. Select **Build and validate graph** for a live RDF, SHACL, and SPARQL request. The workbench labels results loaded from its saved exercises. Public case review is session-local. Run the **Docker stack** for Kafka, PostgreSQL, and the independent projector. Neptune transport is tested against a mock endpoint. Local integration writes N-Triples files. [Architecture and API contracts](docs/ARCHITECTURE.md) · [Configuration](.env.example)
 
 ## Model benchmark
 
@@ -62,11 +62,11 @@ The holdout contains **43,126 transfers and 74 labelled positives**. All models 
 | Logistic regression | 0.0179 | 5 | 427 | 69 |
 | Histogram gradient boosting | **0.0900** | **29** | **403** | **45** |
 
-Gradient boosting led on validation average precision and retained the lead on test. Accuracy alone would hide the workload. An always-negative model gets 99.83% accuracy while finding zero positives. The 5% sample removes graph connections, and the experiment uses one synthetic holdout. A full-graph comparison over several time windows is needed before recommending a model for a bank. [Full metrics](artifacts/evaluation.json) · [Reproduce training](docs/RUNBOOK.md#reproduce-the-benchmark)
+Gradient boosting led on validation average precision and retained the lead on test. An always-negative model would get 99.83% accuracy while finding zero positives. The 5% sample removes graph connections. The original GraphSAGE comparison covers one synthetic holdout. [Full metrics](artifacts/evaluation.json) · [Reproduce training](docs/RUNBOOK.md#reproduce-the-benchmark)
 
 In a follow-up experiment, restoring full pre-cutoff history for the tree model's degree features raised test average precision from 0.0900 to 0.1090, with the same labelled targets and review budget. Positives found rose from 29 to 30 out of the top 432. The review documents the measured coverage, remaining investigation gaps, and case-level tests needed for a pilot. [History ablation](docs/PRODUCTION_READINESS.md#experiment-on-full-historical-context)
 
-The rolling benchmark processes **all 5,078,345 transfers**. At a budget of 100 sender-day groups, adding graph features to the behavior model raised positive groups found from 70 to 90 and from 67 to 87 across two temporal holdouts. The three model-selected preview cases passed validation and retained their source references after replay. [Results and run command](docs/ROLLING_BENCHMARK.md) · [Benchmark JSON](artifacts/rolling_benchmark.json)
+The rolling benchmark replays **all 5,078,345 transfers**. At a budget of 100 sender-day groups, adding graph features to the behavior model raised positive groups found from 70 to 90 and from 67 to 87 across the two holdouts. That retrieves 11.4% and 11.5% of labelled positive groups. The three model-selected cases passed SHACL and retained 21 source transfers in an isolated SQLite investigation run. Live scoring and analyst-confirmed outcomes remain open. [Results and run command](docs/ROLLING_BENCHMARK.md) · [Benchmark JSON](artifacts/rolling_benchmark.json)
 
 The explanations answer different questions. The investigation timeline shows the exact transfers used by a rule. Logistic terms reconstruct the model logit. The tree view replaces one feature group and shows how the score changes. GraphSAGE separates contributions from sender, receiver, and transaction inputs to its fitted scorer. Attribution to individual historical transfers remains open.
 

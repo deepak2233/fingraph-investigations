@@ -141,7 +141,7 @@ async function snapshot(name) {
     throw error;
   }
 }
-async function demoAction(path, options, readSnapshot, preferPublished = false) {
+async function demoAction(path, options, readSnapshot, preferPublished = false, alternatePath) {
   if (publishedMode) return { result: await readSnapshot(), origin: "Published example" };
   if (preferPublished) {
     try {
@@ -151,7 +151,14 @@ async function demoAction(path, options, readSnapshot, preferPublished = false) 
     }
   }
   try {
-    return { result: await boundedRequest(path, options), origin: "Live API" };
+    let result;
+    try {
+      result = await boundedRequest(path, options);
+    } catch (error) {
+      if (error.status !== 404 || !alternatePath) throw error;
+      result = await boundedRequest(alternatePath, options);
+    }
+    return { result, origin: "Live API" };
   } catch (error) {
     if (error.status && error.status < 500 && ![404, 408, 429].includes(error.status)) throw error;
     try {

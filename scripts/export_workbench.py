@@ -24,6 +24,7 @@ def files():
             "research": json.loads((ROOT / "research.json").read_text()),
             "ontology": ontology_schema(),
             "evaluation": evaluation(),
+            "rolling_benchmark": json.loads((ROOT / "artifacts/rolling_benchmark.json").read_text()),
             "examples": examples,
         },
     )

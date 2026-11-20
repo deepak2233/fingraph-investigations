@@ -1,42 +1,43 @@
 digraph FinGraph {
-  graph [rankdir=TB, bgcolor="#f7faf8", pad="0.4", nodesep="0.35", ranksep="0.55", fontname="Arial", label="FinGraph · executable architecture", labelloc=t, fontsize=24];
-  node [shape=box, style="rounded,filled", color="#b5cfc0", fillcolor="white", fontname="Arial", fontsize=12, margin="0.16,0.12"];
-  edge [color="#729a84", arrowsize=0.7, fontname="Arial", fontsize=10];
-  subgraph cluster_ingest {label="Event pipeline"; color="#c9dbd0"; style=rounded;
-    ledger [label="Canonical ledger snapshot\nResolved account IDs and evidence"];
-    builder [label="Candidate builder\nBounded event-time rule checks"];
-    kafka [label="Kafka case events\nVersioned envelope"];
-    worker [label="Intake worker\nContract and SHACL validation"];
-    ledger -> builder -> kafka -> worker;
-    quarantine [label="Quarantine\nSource partition and offset", fillcolor="#fff2df"];
-    worker -> quarantine [label="invalid input"];
+  graph [rankdir=TB, bgcolor="#f7faf8", pad="0.25", nodesep="0.35", ranksep="0.5", fontname="Arial", newrank=true];
+  node [shape=box, style="rounded,filled", color="#b5cfc0", fillcolor="white", fontname="Arial", fontsize=13, margin="0.14,0.1"];
+  edge [color="#729a84", arrowsize=0.7, fontname="Arial", fontsize=11];
+
+  subgraph cluster_workbench {
+    label="Vercel workbench";
+    color="#c9dbd0";
+    style=rounded;
+    ui [label="FastAPI and browser UI\nFive authored cases"];
+    demo [label="On-request RDF + SHACL + SPARQL\nDeterministic investigation draft"];
+    score [label="Sampled model inference\nExported weights and features"];
+    ui -> demo;
+    ui -> score;
   }
-  subgraph cluster_case {label="Investigation and review"; color="#c9dbd0"; style=rounded;
-    agents [label="Five LangGraph specialists\nRisk · screening · ownership\nEvidence · draft"];
-    sql [label="SQL transaction\nInput · snapshot · audit · outbox", fillcolor="#dff0e6"];
-    review [label="Authenticated analyst review\nTenant + role + expected version"];
-    state [label="Versioned decision\nChained audit record"];
-    agents -> sql;
-    sql -> review [label="saved draft"];
-    review -> state [label="compare and swap"];
-    state -> sql [label="atomic commit"];
+  subgraph cluster_durable {
+    label="Durable case service";
+    color="#c9dbd0";
+    style=rounded;
+    rules [label="Canonical snapshot\nFan-out and three-account cycle"];
+    intake [label="Kafka worker / OIDC intake\nTenant-scoped event"];
+    service [label="InvestigationService\nSHACL, evidence and draft"];
+    sql [label="PostgreSQL\nCase, audit and outbox", fillcolor="#dff0e6"];
+    review [label="OIDC reviewer\nVersioned review"];
+    projection [label="Independent RDF projection\nLocal files or Neptune adapter"];
+    rules -> intake -> service -> sql;
+    sql -> review;
+    sql -> projection [label="outbox"];
   }
-  worker -> agents [label="valid event"];
-  sql -> kafka [label="then commit offset", style=dashed, constraint=false];
-  projection [label="Retryable RDF projection\nDeterministic tenant graph"];
-  neptune [label="Neptune adapter / local RDF\nSigV4 request or atomic file"];
-  sql -> projection [label="outbox"];
-  projection -> neptune;
-  subgraph cluster_ml {label="Reproducible ML experiment"; color="#c4d4df"; style=rounded;
-    dataset [label="IBM AMLworld HI-Small\nChecksum-verified source"];
-    prepare [label="Label-blind 5% sample\nFrozen temporal graph snapshots"];
-    train [label="Directed GraphSAGE\nLogistic regression · gradient boosting"];
-    evaluate [label="Validation selection + held-out test\nAverage precision and review budget"];
-    artifacts [label="JSON weights and reference predictions\nDataset manifest and metrics", fillcolor="#e4eef6"];
-    dataset -> prepare -> train -> evaluate -> artifacts;
+  subgraph cluster_benchmark {
+    label="Offline AMLworld benchmark";
+    color="#c4d4df";
+    style=rounded;
+    ledger [label="Complete ledger\n5,078,345 synthetic transfers"];
+    features [label="Rolling event-minute features\nBehavior and directed graph"];
+    ranking [label="Two temporal holdouts\nGradient boosting ranks sender-days"];
+    shadow [label="Same InvestigationService\nThree model-ranked cases in SQLite"];
+    report [label="Metrics and handoff report\nDisplayed in Model Lab", fillcolor="#e4eef6"];
+    ledger -> features -> ranking -> shadow -> report;
   }
-  ui [label="Vercel workbench + FastAPI\nInvestigations · model lab · private service controls",fillcolor="#dcece3"];
-  ui -> agents [label="fixed demo case"];
-  artifacts -> ui [label="live exported model heads"];
-  ui -> review [label="OIDC private service"];
+
+  { rank=same; ui; rules; ledger; }
 }

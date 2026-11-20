@@ -42,6 +42,19 @@ def test_graph_projection_provenance_and_validation_isolation(case):
     assert client.get(f"/api/explorer/{case}").json()["validation"]["conforms"]
 
 
+def test_stable_query_and_function_entry_routes_run_the_same_live_validation():
+    client = TestClient(app)
+    params = {"variant": "missing_evidence", "query": "ownership"}
+    legacy = client.get("/api/explorer/FG-001", params=params)
+    named = client.get("/api/explorer", params={**params, "case_id": "FG-001"})
+    entry = client.get("/api/index.py", params={**params, "case_id": "FG-001", "action": "rdf-explorer"})
+    assert legacy.status_code == named.status_code == entry.status_code == 200
+    assert legacy.json() == named.json() == entry.json()
+    assert not entry.json()["validation"]["conforms"]
+    assert client.get("/api/index.py?action=unregistered&case_id=FG-001").status_code == 422
+    assert client.get("/api/index.py?action=rdf-explorer&case_id=absent").status_code == 404
+
+
 def test_query_boundary_and_real_ownership_results():
     client = TestClient(app)
     assert client.get("/api/explorer/FG-001?query=DELETE").status_code == 422

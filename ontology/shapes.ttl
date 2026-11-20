@@ -1,6 +1,13 @@
 @prefix fg: <https://fingraph.example/ontology/> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+fg:ResourceIdentityShape a sh:NodeShape ;
+ sh:targetClass fg:Account, fg:Transaction, fg:Party, fg:OwnershipAssertion, fg:Evidence ;
+ sh:xone (
+  [sh:class fg:Account] [sh:class fg:Transaction] [sh:class fg:Party]
+  [sh:class fg:OwnershipAssertion] [sh:class fg:Evidence]
+ ) ;
+ sh:message "An RDF resource must represent exactly one of account, transaction, party, ownership claim, or evidence." .
 fg:TransactionShape a sh:NodeShape ; sh:targetClass fg:Transaction ;
  sh:property [sh:path fg:sender; sh:minCount 1; sh:maxCount 1; sh:class fg:Account] ;
  sh:property [sh:path fg:receiver; sh:minCount 1; sh:maxCount 1; sh:class fg:Account] ;

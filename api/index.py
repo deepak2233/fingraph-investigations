@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 import time
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -22,7 +23,7 @@ from pipeline.service import InvalidEvidence, InvestigationService
 from pipeline.store import Conflict, NotFound, Store
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.4.3"
+VERSION = "0.4.4"
 DEMO_ASSETS = {"demo/catalog.json", "demo/scores.json", *(f"demo/{case['id']}.json" for case in CASES)}
 logger = logging.getLogger("fingraph.api")
 
@@ -139,12 +140,24 @@ def ontology():
     return ontology_schema()
 
 
+@app.get("/api/explorer")
 @app.get("/api/explorer/{case_id}")
 def graph_explorer(case_id: str, variant: Variant = "valid", query: Query = "transactions"):
     try:
         return explore(case_id, variant, query)
     except KeyError:
         raise HTTPException(404, "Unknown case") from None
+
+
+@app.get("/api/index.py", include_in_schema=False)
+def graph_explorer_entry(
+    action: Literal["rdf-explorer"],
+    case_id: str,
+    variant: Variant = "valid",
+    query: Query = "transactions",
+):
+    """Handle the same public exercise when addressed through Vercel's function entry."""
+    return graph_explorer(case_id, variant, query)
 
 
 @app.post("/api/investigate")

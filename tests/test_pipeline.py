@@ -14,7 +14,7 @@ from pipeline.auth import Principal, principal
 from pipeline.cli import fixture_events
 from pipeline.contracts import CaseEvent, Review
 from pipeline.neptune import FileProjection, NeptuneProjection, graph_name, project_pending
-from pipeline.service import InvestigationService
+from pipeline.service import InvalidEvidence, InvestigationService
 from pipeline.store import Conflict, NotFound, Store, canonical, cases, events, outbox, quarantine
 from pipeline.worker import handle_message
 
@@ -213,6 +213,17 @@ def test_wire_contract_rejects_invalid_evidence(mutation):
         case["accounts"][0].pop("owner_percentage")
     with pytest.raises(ValidationError):
         CaseEvent.model_validate(payload)
+
+
+def test_intake_rejects_transfer_and_account_rdf_identifier_collision(store):
+    payload = deepcopy(fixture_events()[0])
+    payload["case"]["transactions"][0]["id"] = payload["case"]["accounts"][0]["id"]
+    event = CaseEvent.model_validate(payload)
+    with pytest.raises(InvalidEvidence, match="RDF validation failed"):
+        InvestigationService(store).ingest(event)
+    with store.engine.connect() as connection:
+        for table in (cases, events, outbox):
+            assert connection.execute(select(func.count()).select_from(table)).scalar_one() == 0
 
 
 def test_http_private_flow_roles_tenant_and_review(store):

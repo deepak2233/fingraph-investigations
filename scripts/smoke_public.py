@@ -30,16 +30,26 @@ def verify(base):
 
     home = fetch("/", "text/html")
     require(b"Start with Rapid fan-out" in home, "The public landing page is missing its start section")
-    fetch("/docs/FinGraph_Research_and_Architecture.html", "text/html")
+    architecture = fetch("/docs/FinGraph_Research_and_Architecture.html", "text/html")
     health = fetch("/api/health", "application/json")
     require(health["status"] == "ok" and health["models_trained"], "The live API is not ready")
     version = health["version"]
     require(
-        all(f'/{script}.js?v={version}"'.encode() in home for script in ("app", "lab")),
-        "The workbench scripts and live API have different release versions",
+        all(f'/{script}.js?v={version}"'.encode() in home for script in ("app", "lab"))
+        and f"FinGraph v{version}".encode() in architecture,
+        "The workbench, architecture report, and live API have different release versions",
     )
     catalog = fetch(f"/demo/catalog.json?v={version}", "application/json")
     require(len(catalog["cases"]) == 5 and catalog["guide"]["overview"], "Demo catalog is incomplete")
+    rolling = catalog["rolling_benchmark"]
+    handoffs = [case for fold in rolling["folds"] for case in fold.get("shadow_handoff", [])]
+    require(
+        rolling["source_rows"] == 5_078_345
+        and len(rolling["folds"]) == 2
+        and len(handoffs) == 3
+        and all(case["shacl_conforms"] and case["audit_records_after_replay"] == 1 for case in handoffs),
+        "The full-history comparison or shadow handoff is missing from Model Lab",
+    )
     for case in catalog["cases"]:
         case_id = case["id"]
         published = fetch(f"/demo/{case_id}.json?v={version}", "application/json")["variants"]
@@ -50,7 +60,10 @@ def verify(base):
             not published["missing_evidence"]["graph"]["validation"]["conforms"],
             f"{case_id} saved validation exercise did not fail as expected",
         )
-        live = fetch(f"/api/explorer/{case_id}?variant=valid&query=transactions", "application/json")
+        live = fetch(
+            f"/api/explorer?action=rdf-explorer&case_id={case_id}&variant=valid&query=transactions",
+            "application/json",
+        )
         require(
             live["case_id"] == case_id
             and live["validation"]["conforms"]
@@ -58,10 +71,11 @@ def verify(base):
             f"{case_id} live graph did not match its saved transaction results",
         )
     case_id = catalog["cases"][0]["id"]
-    graph = fetch(
-        f"/api/explorer/{case_id}?variant=missing_evidence&query=ownership", "application/json"
-    )
+    selection = f"action=rdf-explorer&case_id={case_id}&variant=missing_evidence&query=ownership"
+    graph = fetch(f"/api/explorer?{selection}", "application/json")
     require(not graph["validation"]["conforms"], "The live explorer accepted a missing evidence link")
+    entry = fetch(f"/api/index.py?{selection}", "application/json")
+    require(entry == graph, "The live function entry returned a different graph")
     result = fetch("/api/investigate", "application/json", {"case_id": case_id})
     require(
         result["status"] == "awaiting_analyst_review" and len(result["trace"]) == 5, "Workflow failed"

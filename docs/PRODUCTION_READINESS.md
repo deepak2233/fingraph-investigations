@@ -4,9 +4,9 @@ Audit of the FinGraph v0.4.2 implementation at commit `dfe0a61`, 20 November 202
 
 **Decision. Keep live AML alert generation and case prioritisation with the institution's existing controls.** FinGraph can exercise a synthetic investigation and the database review workflow. It has yet to demonstrate detection coverage, analyst workload, or institutional control effectiveness. The first institutional evaluation should be read-only enrichment of alerts from one existing queue, with the access, evidence, and monitoring controls below in place.
 
-The follow-up rolling benchmark measures full-history features across two holdouts and sends model-ranked synthetic account-day groups through the investigation service. [Rolling comparison and handoff](ROLLING_BENCHMARK.md)
+The follow-up rolling benchmark measures full-history features across two holdouts and sends three model-ranked synthetic account-day groups through the investigation service. Release 0.4.4 publishes that comparison and adds a SHACL identity check so ambiguous resources fail new case intake. Cross-window case consolidation, new live motifs, and bank-grade validation are still open. The findings below describe the audited v0.4.2 implementation. [Rolling comparison and handoff](ROLLING_BENCHMARK.md) · [Current architecture and open requirements](ARCHITECTURE.md#16-operational-acceptance-before-bank-use)
 
-## What the code does today
+## What the audited release did
 
 The candidate builder reads a bounded ledger file and emits cases when a deterministic rule fires. The worker investigates and stores preassembled case events. The public model API scores a stored example by ID. These paths have independent inputs and outputs. No trained model is called by the candidate builder, Kafka worker, or investigator. An authenticated API, a graph projection, and replay tests establish engineering behaviour for those paths.
 
@@ -41,7 +41,7 @@ I reproduced the published histogram gradient boosting result, then repeated the
 | Precision at the review budget | 6.71% | 6.94% |
 | Recall at the review budget | 39.19% | 40.54% |
 
-The sample removed substantial account history. Restoring it improved average precision in this run and added one labelled positive at the chosen review budget. The experiment isolates historical coverage for the tree model's existing degree features. It uses one synthetic holdout, frozen cutoffs, and simulated activity spanning multiple banks. Institutional tests must restrict input to records the investigating institution could access at the decision time. Rolling replay, GraphSAGE with complete neighbourhoods, and richer graph features remain to be evaluated. [Machine-readable results](../artifacts/history_ablation.json) · [Experiment code](../ml/history_ablation.py)
+The sample removed substantial account history. Restoring it improved average precision in this run and added one labelled positive at the chosen review budget. This ablation isolates historical coverage for the tree model's degree features. The later benchmark evaluates rolling replay and richer graph features. GraphSAGE with complete neighbourhoods remains open. Institutional tests need the records visible to the investigating institution at the decision time. [Machine-readable results](../artifacts/history_ablation.json) · [Experiment code](../ml/history_ablation.py) · [Rolling benchmark](ROLLING_BENCHMARK.md)
 
 Run the experiment with the verified IBM source CSV and the published sample preparation settings. The program verifies both file digests and reads full-source history without labels.
 

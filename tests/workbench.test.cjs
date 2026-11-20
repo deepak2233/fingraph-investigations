@@ -91,17 +91,42 @@ test("evidence citations preserve the investigation and its anchor", () => {
   assert.deepEqual(app.visible(), ["overview"]);
 });
 
-test("a missing live RDF route falls back to the matching published exercise", async () => {
-  const route = "/api/explorer/FG-004?variant=missing_evidence&query=ownership";
+const graphParams = "action=rdf-explorer&case_id=FG-004&variant=missing_evidence&query=ownership";
+const graphRoute = `/api/explorer?${graphParams}`;
+const graphEntry = `/api/index.py?${graphParams}`;
+
+test("a missing live RDF route tries the live function entry before using snapshots", async () => {
   const fixture = { case_id: "FG-004", variant: "missing_evidence" };
+  const urls = [];
   const app = workbench("#data", {
     published: false,
     async fetch(url) {
-      assert.equal(url, route);
+      urls.push(url);
+      return url === graphRoute
+        ? Response.json({ detail: "Unknown asset" }, { status: 404 })
+        : Response.json(fixture);
+    },
+  });
+  const response = await app.demoAction(graphRoute, {}, async () => {
+    assert.fail("The live function entry supplied the result.");
+  }, false, graphEntry);
+  assert.deepEqual(urls, [graphRoute, graphEntry]);
+  assert.deepEqual(response.result, fixture);
+  assert.equal(app.demoOrigin(response), "Live API");
+});
+
+test("two missing live RDF routes fall back to the matching published exercise", async () => {
+  const fixture = { case_id: "FG-004", variant: "missing_evidence" };
+  const urls = [];
+  const app = workbench("#data", {
+    published: false,
+    async fetch(url) {
+      urls.push(url);
       return Response.json({ detail: "Unknown asset" }, { status: 404 });
     },
   });
-  const response = await app.demoAction(route, {}, async () => fixture);
+  const response = await app.demoAction(graphRoute, {}, async () => fixture, false, graphEntry);
+  assert.deepEqual(urls, [graphRoute, graphEntry]);
   assert.equal(response.result, fixture);
   assert.equal(response.origin, "Published example");
   assert.match(app.demoOrigin(response), /Live API unavailable \(HTTP 404\)\. Showing a published example/);

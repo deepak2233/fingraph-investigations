@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from api.index import app
-from ml.inference import baseline_score, examples, score
+from ml.inference import baseline_score, examples, predict_example, score
 
 
 def test_exported_models_match_training_runtime():
@@ -25,3 +25,19 @@ def test_model_normal_entry_point_and_invalid_requests():
     assert client.get("/api/model/evaluation").json()["dataset"]["source_rows"] == 5078345
     with pytest.raises(ValueError):
         score([float("nan")])
+
+
+def test_graphsage_attribution_reconstructs_every_example_score():
+    import math
+
+    for example in examples():
+        result = predict_example(example["id"])
+        explanation = result["explanations"]["graphsage"]
+        reconstructed = explanation["reference_logit"] + sum(
+            group["logit_contribution"] for group in explanation["groups"]
+        )
+        assert reconstructed == pytest.approx(explanation["logit"], abs=1e-12)
+        assert 1 / (1 + math.exp(-reconstructed)) == pytest.approx(result["score"], abs=1e-12)
+        assert sum(
+            term["logit_contribution"] for term in explanation["transaction_terms"]
+        ) == pytest.approx(explanation["groups"][2]["logit_contribution"], abs=1e-12)

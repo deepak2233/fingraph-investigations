@@ -34,17 +34,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Build and start services
-        run: docker compose up --build -d
+      - name: Start intake with graph projection offline
+        run: docker compose up --build -d api worker
       - name: Publish source events
         run: docker compose run --rm worker python -m pipeline.cli publish
+      - name: Verify cases commit while projection is offline
+        run: docker compose exec -T worker python -m scripts.verify_stack --intake-only --check-offsets
+      - name: Start projector and drain the outbox
+        run: docker compose up --build -d projector
       - name: Verify ingestion, projection and review
-        run: docker compose exec -T worker python -m scripts.verify_stack
+        run: |
+          docker compose exec -T worker python -m scripts.verify_stack
+          docker compose exec -T projector python -c 'from pathlib import Path; entries = list(Path("var/graphs").glob("*.nt")); assert len(entries) == 5 and all(p.stat().st_size > 0 for p in entries)'
       - name: Restart worker and replay events
         run: |
           docker compose restart worker
           docker compose run --rm worker python -m pipeline.cli publish
-          docker compose exec -T worker python -m scripts.verify_stack
+          docker compose exec -T worker python -m scripts.verify_stack --check-offsets
       - name: Service logs
         if: always()
         run: docker compose logs --no-color --tail=150

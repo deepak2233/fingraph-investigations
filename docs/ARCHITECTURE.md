@@ -24,7 +24,7 @@ A production programme would measure analyst time, unsupported statements, evide
 | Semantic engine | Map records to RDF, validate shapes, retrieve direct ownership context | `api/core.py` |
 | Investigation workflow | Graph risk, screening availability, ownership, evidence, drafting, review gate | `api/core.py` |
 | SQL ledger | Event deduplication, cases, review requests, audit chain, projection outbox, quarantine | `pipeline/store.py` |
-| Graph projection | Write a case graph into a deterministic tenant-specific graph | `pipeline/neptune.py` |
+| Graph projector | Poll the committed outbox and write a deterministic tenant-specific graph | `python -m pipeline.projector` |
 | Private API | OIDC authentication, roles, tenant scoping, versioned review | `api/index.py` |
 | Model pipeline | Dataset preparation, temporal snapshots, training, evaluation, JSON exports | `ml/prepare.py`, `ml/train.py` |
 | Workbench | Investigation view, model comparison, inference, authenticated service controls | `index.html`, `app.js` |
@@ -90,7 +90,7 @@ The consumer disables automatic commits and automatic offset storage. It commits
 
 Kafka and PostgreSQL do not share a transaction. The implementation therefore uses at-least-once delivery with idempotent persistence. A crash after SQL commit and before offset commit causes a replay. A crash after graph publication and before the outbox is marked complete causes repeated graph insertion. The graph URI and triples are deterministic, so set insertion produces the same graph content.
 
-Projection failures leave a pending outbox entry with its attempt count and error type. The worker retries pending entries while polling. The current worker is a single straightforward consumer loop. A production deployment should separate projection workers when slow external calls compete with ingestion, implement retry backoff and dead-letter escalation, and monitor consumer lag and oldest pending projection age.
+The projector runs independently of the intake consumer. A slow or unavailable graph store leaves committed SQL cases available for review and the RDF jobs pending. The projector orders pending entries by attempt count and waits after an idle or failed poll. A late failure cannot reopen a published row. The current projector uses one process. Per-job backoff, dead-letter escalation, multi-worker leasing, and backlog alerts are follow-on work.
 
 The Docker Compose stack is a local integration environment with one Kafka broker and one PostgreSQL instance. Production replication, backup, disaster recovery, topic ACLs, TLS, authentication, and capacity sizing depend on the target environment. Source producers must be trusted and authorized to publish each tenant's records.
 
@@ -187,9 +187,9 @@ The inference cards deliberately include high-score examples, positive-label exa
 
 ## 14. Deployment and CI
 
-The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. The public workbench is useful without cloud database credentials. Connecting its Pipeline tab to the private API requires the service configuration described in the README. [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)
+The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. Connecting the Pipeline tab to the private API requires the service configuration in the [runbook](RUNBOOK.md). [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)
 
-The `CI` workflow runs linting, formatting checks, regression tests, and JavaScript syntax validation. A separate job starts PostgreSQL, Kafka, the API, and the worker in Docker Compose, publishes five events, verifies persisted cases and graph files, records an idempotent review, restarts the worker, and replays the events.
+The `CI` workflow checks code and regenerated demo assets. A separate job starts PostgreSQL, Kafka and intake with projection offline, then confirms five committed cases, pending outbox rows and broker acknowledgements. It starts the projector, checks the files and an idempotent review, and uses committed Kafka offsets to verify that the worker consumed the replay batch after a restart.
 
 The benchmark workflow downloads the checksum-verified source, prepares the sample, trains all three models, and uploads the JSON artifacts. It runs on manual dispatch so ordinary code pushes avoid repeated dataset downloads. The deployment workflow reruns verification before using configured Vercel credentials. Its required GitHub secret and variables are documented explicitly. The current deployment can also be published through the connected Vercel account.
 
@@ -310,9 +310,11 @@ Validation-only grouped permutation tests measure the decrease in average precis
 
 Plausible causes include removal of 95% of transfers, loss of graph motifs, only 110 positive training targets, frozen graph snapshots and a small untuned architecture. These are hypotheses. A controlled full-graph experiment, retrained graph ablation, multiple seeds and matched tuning budgets are required to isolate the cause. More graph complexity is not automatically better.
 
-### Four different explanation layers
+### Evidence and model explanations
 
-Source provenance answers where a fact came from. Rule traces answer which temporal condition fired and which transfers support it. Logistic contributions reconstruct an exact model logit. Gradient-boosting perturbations show sensitivity to an artificial reference substitution. None is a legal explanation, a causal proof or a faithful attribution of GNN edges.
+The transfer timeline and graph share a selection. Each selected transfer links to the source ID and RDF resource. Rule traces identify the condition that fired and the records it used. The Model lab separately shows exact logistic logit terms and gradient boosting sensitivity to feature-group replacement.
+
+GraphSAGE uses frozen sender and receiver embeddings plus the transaction feature vector. For its exported linear–ReLU–linear scorer, each hidden preactivation varies linearly from the zero reference to the example. The fraction of this path above zero gives its exact integrated gradient. Sender, receiver and transaction contributions sum to the change in logit. This attributes the scorer inputs and leaves attribution to individual historical edges open. The reference is a mathematical baseline, outside the set of known transactions. [Integrated Gradients](https://proceedings.mlr.press/v70/sundararajan17a.html)
 
 ### Threshold versus review budget
 

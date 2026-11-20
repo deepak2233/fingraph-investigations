@@ -15,7 +15,7 @@ from pipeline.cli import fixture_events
 from pipeline.contracts import CaseEvent, Review
 from pipeline.neptune import FileProjection, NeptuneProjection, graph_name, project_pending
 from pipeline.service import InvestigationService
-from pipeline.store import Conflict, NotFound, Store, canonical, cases, events, quarantine
+from pipeline.store import Conflict, NotFound, Store, canonical, cases, events, outbox, quarantine
 from pipeline.worker import handle_message
 
 
@@ -98,6 +98,18 @@ def test_projection_failure_and_replay(store, tmp_path):
     assert project_pending(store, projection) == 0
     assert len(list((tmp_path / "rdf").glob("*.nt"))) == 1
     assert store.get("demo", run["run_id"])["status"] == "awaiting_analyst_review"
+    store.projection_result(run["run_id"], "Late error from another attempt")
+    with store.engine.connect() as connection:
+        assert connection.execute(select(outbox.c.status)).scalar_one() == "published"
+
+
+def test_attempted_projection_does_not_block_fresh_row(store):
+    service = InvestigationService(store)
+    failed = service.ingest(fixture_events()[0])
+    store.projection_result(failed["run_id"], "Unavailable")
+    fresh = service.ingest(fixture_events()[1])
+
+    assert store.pending_projections(limit=1)[0]["id"] == fresh["run_id"]
 
 
 def test_neptune_request_is_signed_and_graph_is_scoped():
@@ -124,10 +136,11 @@ def test_neptune_request_is_signed_and_graph_is_scoped():
     assert graph_name("tenant-a", "run-1") != graph_name("tenant-b", "run-1")
 
 
-def test_invalid_records_are_quarantined_and_database_failures_propagate(store, monkeypatch):
+@pytest.mark.parametrize("payload", [b'{"malformed": true}', None])
+def test_invalid_records_are_quarantined_and_database_failures_propagate(store, monkeypatch, payload):
     class Message:
         def value(self):
-            return b'{"malformed": true}'
+            return payload
 
         def topic(self):
             return "cases"
@@ -150,6 +163,33 @@ def test_invalid_records_are_quarantined_and_database_failures_propagate(store, 
     monkeypatch.setattr(store, "quarantine_record", fail)
     with pytest.raises(RuntimeError):
         handle_message(service, Message())
+
+
+def test_unexpected_investigation_error_is_not_quarantined(store, monkeypatch):
+    import json
+
+    class Message:
+        def value(self):
+            return json.dumps(fixture_events()[0]).encode()
+
+        def topic(self):
+            return "cases"
+
+        def partition(self):
+            return 0
+
+        def offset(self):
+            return 12
+
+    def fail(_):
+        raise ValueError("Unexpected investigation error")
+
+    service = InvestigationService(store)
+    monkeypatch.setattr(service, "ingest", fail)
+    with pytest.raises(ValueError, match="Unexpected investigation error"):
+        handle_message(service, Message())
+    with store.engine.connect() as connection:
+        assert connection.execute(select(func.count()).select_from(quarantine)).scalar_one() == 0
 
 
 @pytest.mark.parametrize(

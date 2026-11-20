@@ -319,7 +319,10 @@ class Store:
             return [
                 dict(row)
                 for row in connection.execute(
-                    select(outbox).where(outbox.c.status == "pending").limit(limit)
+                    select(outbox)
+                    .where(outbox.c.status == "pending")
+                    .order_by(outbox.c.attempts, outbox.c.id)
+                    .limit(limit)
                 ).mappings()
             ]
 
@@ -327,7 +330,7 @@ class Store:
         with self.connection() as connection:
             connection.execute(
                 update(outbox)
-                .where(outbox.c.id == key)
+                .where(outbox.c.id == key, outbox.c.status == "pending")
                 .values(
                     attempts=outbox.c.attempts + 1,
                     last_error=error,

@@ -314,9 +314,9 @@
 <td><code>pipeline/store.py</code></td>
 </tr>
 <tr>
-<td>Graph projection</td>
-<td>Write a case graph into a deterministic tenant-specific graph</td>
-<td><code>pipeline/neptune.py</code></td>
+<td>Graph projector</td>
+<td>Poll the committed outbox and write a deterministic tenant-specific graph</td>
+<td><code>python -m pipeline.projector</code></td>
 </tr>
 <tr>
 <td>Private API</td>
@@ -440,7 +440,7 @@
 <h2 id="7-kafka-and-the-transactional-outbox">7. Kafka and the transactional outbox</h2>
 <p>The consumer disables automatic commits and automatic offset storage. It commits an offset only after a case has been committed or the malformed record has been durably quarantined. Database failures leave the offset uncommitted. Replaying the event is safe because SQL enforces identity and payload consistency. <a href="https://docs.confluent.io/kafka-clients/python/current/overview.html">Confluent Python client</a></p>
 <p>Kafka and PostgreSQL do not share a transaction. The implementation therefore uses at-least-once delivery with idempotent persistence. A crash after SQL commit and before offset commit causes a replay. A crash after graph publication and before the outbox is marked complete causes repeated graph insertion. The graph URI and triples are deterministic, so set insertion produces the same graph content.</p>
-<p>Projection failures leave a pending outbox entry with its attempt count and error type. The worker retries pending entries while polling. The current worker is a single straightforward consumer loop. A production deployment should separate projection workers when slow external calls compete with ingestion, implement retry backoff and dead-letter escalation, and monitor consumer lag and oldest pending projection age.</p>
+<p>The projector runs independently of the intake consumer. A slow or unavailable graph store leaves committed SQL cases available for review and the RDF jobs pending. The projector orders pending entries by attempt count and waits after an idle or failed poll. A late failure cannot reopen a published row. The current projector uses one process. Per-job backoff, dead-letter escalation, multi-worker leasing, and backlog alerts are follow-on work.</p>
 <p>The Docker Compose stack is a local integration environment with one Kafka broker and one PostgreSQL instance. Production replication, backup, disaster recovery, topic ACLs, TLS, authentication, and capacity sizing depend on the target environment. Source producers must be trusted and authorized to publish each tenant's records.</p>
 <h2 id="8-neptune-projection">8. Neptune projection</h2>
 <p>The adapter signs requests with AWS Signature Version 4 for the <code>neptune-db</code> service. It refreshes credentials through the AWS SDK provider chain. RDFLib serializes the triples, and hashed tenant and run identifiers construct the graph URI. User text is never interpolated into SPARQL syntax. The client uses an HTTPS endpoint, request timeouts, and disabled redirects. <a href="https://docs.aws.amazon.com/neptune/latest/userguide/iam-auth-connecting.html">AWS IAM authentication</a></p>
@@ -665,8 +665,8 @@
 </tbody>
 </table>
 <h2 id="14-deployment-and-ci">14. Deployment and CI</h2>
-<p>The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. The public workbench is useful without cloud database credentials. Connecting its Pipeline tab to the private API requires the service configuration described in the README. <a href="https://vercel.com/docs/frameworks/backend/fastapi">FastAPI on Vercel</a></p>
-<p>The <code>CI</code> workflow runs linting, formatting checks, regression tests, and JavaScript syntax validation. A separate job starts PostgreSQL, Kafka, the API, and the worker in Docker Compose, publishes five events, verifies persisted cases and graph files, records an idempotent review, restarts the worker, and replays the events.</p>
+<p>The Vercel deployment serves static assets and short FastAPI requests. Kafka consumption, a continuously available private graph connection, and model training run outside the request function. Connecting the Pipeline tab to the private API requires the service configuration in the <a href="RUNBOOK.md">runbook</a>. <a href="https://vercel.com/docs/frameworks/backend/fastapi">FastAPI on Vercel</a></p>
+<p>The <code>CI</code> workflow checks code and regenerated demo assets. A separate job starts PostgreSQL, Kafka and intake with projection offline, then confirms five committed cases, pending outbox rows and broker acknowledgements. It starts the projector, checks the files and an idempotent review, and uses committed Kafka offsets to verify that the worker consumed the replay batch after a restart.</p>
 <p>The benchmark workflow downloads the checksum-verified source, prepares the sample, trains all three models, and uploads the JSON artifacts. It runs on manual dispatch so ordinary code pushes avoid repeated dataset downloads. The deployment workflow reruns verification before using configured Vercel credentials. Its required GitHub secret and variables are documented explicitly. The current deployment can also be published through the connected Vercel account.</p>
 <h2 id="15-operational-acceptance-before-bank-use">15. Operational acceptance before bank use</h2>
 <p>A bank deployment needs a named owner for source contracts, identity resolution, data retention, screening policy, model validation, incident response, and reviewer authorization. The workflow should be exercised against approved data with the actual tenant and identity configuration. Production targets for throughput, latency, recovery time, recovery point, and alert capacity need to be established with workload measurements.</p>
@@ -864,8 +864,9 @@
 <p>Validation-only grouped permutation tests measure the decrease in average precision when a feature group is shuffled. Gradient boosting relies strongly on payment format, amount and currency in this sample. Trees can represent nonlinear interactions among those fields. The permutation plot provides measured reliance, but does not prove those features cause laundering or prove why one algorithm outperforms another.</p>
 <h3 id="why-the-gnn-may-lag">Why the GNN may lag</h3>
 <p>Plausible causes include removal of 95% of transfers, loss of graph motifs, only 110 positive training targets, frozen graph snapshots and a small untuned architecture. These are hypotheses. A controlled full-graph experiment, retrained graph ablation, multiple seeds and matched tuning budgets are required to isolate the cause. More graph complexity is not automatically better.</p>
-<h3 id="four-different-explanation-layers">Four different explanation layers</h3>
-<p>Source provenance answers where a fact came from. Rule traces answer which temporal condition fired and which transfers support it. Logistic contributions reconstruct an exact model logit. Gradient-boosting perturbations show sensitivity to an artificial reference substitution. None is a legal explanation, a causal proof or a faithful attribution of GNN edges.</p>
+<h3 id="evidence-and-model-explanations">Evidence and model explanations</h3>
+<p>The transfer timeline and graph share a selection. Each selected transfer links to the source ID and RDF resource. Rule traces identify the condition that fired and the records it used. The Model lab separately shows exact logistic logit terms and gradient boosting sensitivity to feature-group replacement.</p>
+<p>GraphSAGE uses frozen sender and receiver embeddings plus the transaction feature vector. For its exported linear–ReLU–linear scorer, each hidden preactivation varies linearly from the zero reference to the example. The fraction of this path above zero gives its exact integrated gradient. Sender, receiver and transaction contributions sum to the change in logit. This attributes the scorer inputs and leaves attribution to individual historical edges open. The reference is a mathematical baseline, outside the set of known transactions. <a href="https://proceedings.mlr.press/v70/sundararajan17a.html">Integrated Gradients</a></p>
 <h3 id="threshold-versus-review-budget">Threshold versus review budget</h3>
 <p>A fixed threshold is selected by maximum validation F1 and carried unchanged into the test set. A top-k review budget instead sorts the whole held-out batch and reviews its highest scores. They are different operating policies. The budget explorer shows realised retrospective counts, not an online alert-volume guarantee.</p>
 <h3 id="uncertainty-and-operational-impact">Uncertainty and operational impact</h3>
@@ -881,4 +882,4 @@
 <h3 id="p1-extend-semantics-and-explanation">P1 · Extend semantics and explanation</h3>
 <p>Add entity-resolution provenance, conflicting claims, validity intervals, multi-layer ownership and policy-specific control rules. Evaluate evidence coverage, explanation fidelity and missing-data behaviour. GNN edge explanations need a separate fidelity benchmark; a highlighted rule path cannot stand in for a learned model explanation.</p>
 <h3 id="p2-validate-the-business-outcome">P2 · Validate the business outcome</h3>
-<p>Run a blinded analyst study or approved shadow deployment. Measure review time, useful-case yield, missed-case discovery, disagreement and escalation quality. Add disaster recovery, independent security testing, governance and retention controls. Operational benefit remains a target until measured with the intended users and data.</p></main><footer>Deepak Yadav · FinGraph v0.3 · 19 November 2026</footer></body></html>
+<p>Run a blinded analyst study or approved shadow deployment. Measure review time, useful-case yield, missed-case discovery, disagreement and escalation quality. Add disaster recovery, independent security testing, governance and retention controls. Operational benefit remains a target until measured with the intended users and data.</p></main><footer>Deepak Yadav · FinGraph v0.4.0 · 20 November 2026</footer></body></html>

@@ -4,6 +4,10 @@ from api.core import investigate, resume_review
 from pipeline.contracts import CaseEvent
 
 
+class InvalidEvidence(ValueError):
+    """A case passed the wire contract but failed semantic validation."""
+
+
 class InvestigationService:
     def __init__(self, store):
         self.store = store
@@ -13,7 +17,7 @@ class InvestigationService:
         payload = event.model_dump(mode="json")
         result = investigate(payload["case"])
         if result["status"] == "quarantined":
-            raise ValueError("RDF validation failed")
+            raise InvalidEvidence("RDF validation failed")
         result["provenance"]["review_storage"] = (
             "SQL snapshot with versioned review and transactional audit"
         )

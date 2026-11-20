@@ -59,6 +59,13 @@ def verify(base):
         scores["scores"] == reference["scores"] and len(scores["scores"]) == 3, "Unexpected model scores"
     )
     require("logistic" in scores["explanations"], "Missing score explanations")
+    graphsage = scores["explanations"]["graphsage"]
+    reconstructed = graphsage["reference_logit"] + sum(
+        row["logit_contribution"] for row in graphsage["groups"]
+    )
+    require(
+        abs(reconstructed - graphsage["logit"]) < 1e-12, "GraphSAGE contributions do not sum to logit"
+    )
     print(f"Public workbench and live demo verified (API {health['version']}).")
 
 

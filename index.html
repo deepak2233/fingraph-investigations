@@ -8,9 +8,9 @@
       content="FinGraph financial crime investigation research workbench. Explore evidence-backed graph signals and an ontology-driven architecture using synthetic examples."
     />
     <title>FinGraph | Investigation Workbench</title>
-    <link rel="stylesheet" href="/style.css?v=0.3.1" />
-    <script src="/app.js?v=0.3.1-1" defer></script>
-    <script src="/lab.js?v=0.3.1" defer></script>
+    <link rel="stylesheet" href="/style.css?v=0.4.0" />
+    <script src="/app.js?v=0.4.0" defer></script>
+    <script src="/lab.js?v=0.4.0" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -40,7 +40,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="avatar">DY</div>
-        <div>Deepak Yadav<small>Research project · v0.3.1</small></div>
+        <div>Deepak Yadav<small>Research project · v0.4.0</small></div>
       </div>
     </aside>
     <div class="shell">
@@ -289,10 +289,8 @@
               </div>
               <div class="graph-toolbar">
                 <span><i class="legend account"></i>Account</span
-                ><span><i class="legend owner"></i>Owner assertion</span
-                ><span class="right" id="graph-caption"
-                  >Transaction flow · USD</span
-                >
+                ><span><i class="legend evidence-edge"></i>Rule evidence</span
+                ><span><i class="legend selected-edge"></i>Selected transfer</span>
               </div>
               <div
                 id="network"
@@ -307,8 +305,18 @@
               </div>
             </section>
           </div>
-          <div id="rule-explainer" class="panel padded space-top hidden"></div>
           <div id="status" role="status" aria-live="polite"></div>
+          <div id="rule-explainer" class="panel padded space-top hidden"></div>
+          <section id="transfer-evidence" class="panel padded space-top hidden">
+            <div class="timeline-heading">
+              <div><h3>Transfer timeline</h3><p>Select a transfer here or on the graph to inspect its source record.</p></div>
+              <span id="transfer-summary" role="status"></span>
+            </div>
+            <div class="transfer-workbench">
+              <ol id="transfer-timeline" aria-label="Transfers in event-time order"></ol>
+              <article id="transfer-detail" aria-label="Selected transfer evidence" aria-live="polite"></article>
+            </div>
+          </section>
           <section class="panel results">
             <div class="panel-heading">
               <div>
@@ -339,6 +347,7 @@
               One temporal holdout. Three approaches. Inspect the measured
               results, then run inference on a held-out transaction.
             </p>
+            <button type="button" class="text-link" id="try-inference">Try a held-out transaction ↘</button>
           </div>
           <div id="model-summary" class="stats"></div>
           <div class="panel padded decision-banner">
@@ -419,7 +428,7 @@
             </p>
           </div>
           <div class="model-workbench">
-            <section class="panel padded">
+            <section class="panel padded" id="inference-panel">
               <h3>Run model inference</h3>
               <label for="model-example">Held-out transaction</label
               ><select id="model-example"></select>
@@ -455,8 +464,7 @@
             <h3>Explain the selected prediction</h3>
             <div id="prediction-explanation">
               <p>
-                Score a transaction above to inspect the exact logistic
-                contribution terms and gradient-boosting sensitivity.
+                Score a transaction above to compare the three model explanations.
               </p>
             </div>
           </section>
@@ -509,7 +517,7 @@
               and persistence.
             </p>
             <p id="service-availability" role="status">Durable review requires a configured PostgreSQL and OIDC backend.</p>
-            <p><a href="https://github.com/deepak2233/fingraph-investigations#9-run-locally">Run the backend locally ↗</a></p>
+            <p><a href="https://github.com/deepak2233/fingraph-investigations#run-locally">Run the backend locally ↗</a></p>
             <div id="service-form" class="hidden">
               <label for="service-token">OIDC bearer token</label
               ><input

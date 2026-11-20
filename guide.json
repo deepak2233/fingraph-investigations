@@ -99,8 +99,8 @@
       "text": "Plausible causes include removal of 95% of transfers, loss of graph motifs, only 110 positive training targets, frozen graph snapshots and a small untuned architecture. These are hypotheses. A controlled full-graph experiment, retrained graph ablation, multiple seeds and matched tuning budgets are required to isolate the cause. More graph complexity is not automatically better."
     },
     {
-      "title": "Four different explanation layers",
-      "text": "Source provenance answers where a fact came from. Rule traces answer which temporal condition fired and which transfers support it. Logistic contributions reconstruct an exact model logit. Gradient-boosting perturbations show sensitivity to an artificial reference substitution. None is a legal explanation, a causal proof or a faithful attribution of GNN edges."
+      "title": "Evidence and prediction explanations",
+      "text": "Select a timeline transfer to see the source ID and the corresponding RDF resource. The rule trace explains why those records appear together. The Model lab shows exact logistic terms, tree model sensitivity to group replacement, and GraphSAGE edge-score contributions from sender, receiver and transaction inputs. GraphSAGE uses frozen embeddings, so mapping scores back to individual historical transfers requires a separate experiment."
     },
     {
       "title": "Threshold versus review budget",

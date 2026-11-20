@@ -1,6 +1,6 @@
 # Verification record
 
-Version 0.3.1, updated 20 November 2026.
+Updated 20 November 2026.
 
 ## Public access and startup
 
@@ -10,7 +10,13 @@ The release renders a landing page and an architecture report link before JavaSc
 
 `python -m scripts.export_workbench --check` checks the published catalog and results against their source implementations. `python -m scripts.smoke_public https://fingraph-investigations.vercel.app` checks the public origin without credentials and runs the graph, workflow and model calls end to end. The deployment workflow uses the public alias for this probe because generated Vercel deployment URLs can be protected.
 
-## Completed checks
+## Release 0.4 checks
+
+The Kafka integration workflow starts intake without the projector, waits for all five cases and broker offsets, then starts the projector and checks its RDF files. On replay it waits for the second batch's offsets before checking event and audit counts. This exercises a stopped projector and recovery using the local file sink. It does not establish throughput or live AWS behavior.
+
+The model attribution test reconstructs the GraphSAGE score from its grouped logit terms for every exported example. It checks the frozen scoring head. Historical edge attribution would require a separate experiment.
+
+## Earlier regression checks
 
 - Local regression suite: **38 tests passed**. The suite covers replay, conflicting payloads, restart recovery, versioned reviews, concurrent reviewer conflicts, SQL rollback, tenant-scoped HTTP access, OIDC signatures and expiry, quarantine, projection retries, and model export parity.
 - The expanded explorer tests cover all five fixtures, three invalid-graph mutations per fixture, unchanged source records, exact source provenance, and rejection of unlisted query/variant names.

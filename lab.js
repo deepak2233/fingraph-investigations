@@ -2,6 +2,7 @@
 // Both the live and published views use projections produced by the Python implementation.
 let explored = null;
 let graphLoading = false;
+const evidenceLink = new URLSearchParams(location.search);
 const colors = {
   directed_graphsage: "#7561b0",
   logistic_regression: "#3483b1",
@@ -72,6 +73,7 @@ async function loadExplorer(preferPublished = false) {
       },
       preferPublished,
     );
+    const focus = explored?.case_id === source.id ? $("rdf-focus").value : evidenceLink.get("resource");
     explored = response.result;
     $("data-status").textContent = `${demoOrigin(response)} · ${explored.mutation}`;
     $("data-stats").innerHTML =
@@ -117,7 +119,9 @@ async function loadExplorer(preferPublished = false) {
           `<option value="${esc(n.id)}">${esc(n.id)} · ${esc(n.types.join(", "))}</option>`,
       )
       .join("");
-    $("rdf-focus").value = "ex:" + source.transactions[0].id;
+    $("rdf-focus").value = explored.nodes.some((node) => node.id === focus)
+      ? focus
+      : "ex:" + source.transactions[0].id;
     renderRdfFocus();
     renderTriples();
     $("rdf-turtle").textContent = explored.turtle;
@@ -357,27 +361,68 @@ function renderConfusion() {
     ]),
   );
 }
+function signedExplanationChart(rows, units) {
+  const limit = Math.max(...rows.map((row) => Math.abs(row.value)), 1e-9);
+  return `<div class="signed-chart" aria-label="${esc(units)}"><div class="signed-key"><span>Lower <b>←</b></span><span>0</span><span><b>→</b> Higher</span></div>
+    ${rows.map(({ label, value }) => {
+      const width = (Math.abs(value) * 100) / limit;
+      const sign = value < 0 ? "negative" : "positive";
+      return `<div class="signed-row"><span>${esc(label.replaceAll("_", " "))}</span><div class="signed-track" aria-hidden="true"><i class="${sign}" style="--size:${width / 2}%"></i></div><strong>${value > 0 ? "+" : ""}${value.toFixed(5)}</strong></div>`;
+    }).join("")}</div>`;
+}
+
+let explanationModel = "gradient_boosting";
+const explanationTitles = {
+  gradient_boosting: "Gradient boosting",
+  logistic: "Logistic regression",
+  graphsage: "GraphSAGE",
+};
+
+function explanationBody(result, kind) {
+  const info = result.explanations[kind];
+  if (kind === "gradient_boosting") {
+    return `<h4>How feature-group replacement changed the score</h4>
+      <p>${esc(info.method)}</p><p class="muted">Bars show the original score minus the replacement score.</p>
+      ${signedExplanationChart(info.sensitivity.map((item) => ({ label: item.group, value: item.score_difference })), "Difference in model score")}
+      <details><summary>Show replacement scores</summary><div class="table-scroll">${table(
+        ["Group replaced", "Original score", "Replacement score", "Difference"],
+        info.sensitivity.map((item) => [item.group, item.original_score.toFixed(5), item.reference_replacement_score.toFixed(5), item.score_difference.toFixed(5)]),
+      )}</div></details>`;
+  }
+  if (kind === "logistic") {
+    return `<h4>What raised or lowered the logistic score</h4>
+      <p>Intercept <b>${info.intercept.toFixed(5)}</b> plus all terms gives a logit of <b>${info.logit.toFixed(5)}</b>. The sigmoid maps it to <b>${result.scores.logistic_regression.toFixed(6)}</b>.</p>
+      <p class="muted">The six largest terms are shown in log-odds. Each term is the encoded value times its learned weight.</p>
+      ${signedExplanationChart(info.contributions.slice(0, 6).map((item) => ({ label: item.feature, value: item.logit_contribution })), "Log-odds contribution")}
+      <details><summary>Show every contribution</summary><div class="table-scroll">${table(
+        ["Feature", "Encoded value", "Weight", "Logit contribution"],
+        info.contributions.map((item) => [item.feature, item.value.toFixed(4), item.weight.toFixed(4), item.logit_contribution.toFixed(5)]),
+      )}</div></details>`;
+  }
+  if (!info.groups) return `<p>${esc(info.method)}</p>`;
+  return `<h4>How the GraphSAGE edge scorer used its inputs</h4>
+    <p>Reference logit <b>${info.reference_logit.toFixed(5)}</b> plus the three groups gives <b>${info.logit.toFixed(5)}</b>. Score <b>${result.scores.directed_graphsage.toFixed(6)}</b>.</p>
+    ${signedExplanationChart(info.groups.map((group) => ({ label: group.group, value: group.logit_contribution })), "Log-odds change from zero reference")}
+    <p class="muted">${esc(info.method)}</p>
+    <details><summary>Show transaction-level input terms</summary><div class="table-scroll">${table(
+      ["Transaction feature", "Logit contribution"],
+      info.transaction_terms.map((item) => [item.feature, item.logit_contribution.toFixed(5)]),
+    )}</div></details>`;
+}
+
 function renderExplanation(result) {
-  const explanation = result.explanations,
-    linear = explanation.logistic;
-  $("prediction-explanation").innerHTML =
-    `<h4>Logistic regression: exact log-odds reconstruction</h4><p>${esc(linear.method)}</p><p>Intercept ${linear.intercept.toFixed(5)} + all feature terms = <b>${linear.logit.toFixed(5)}</b>. Sigmoid(logit) = <b>${result.scores.logistic_regression.toFixed(6)}</b>.</p><div class="table-scroll explanation-table">${table(
-      ["Feature", "Encoded value", "Weight", "Logit contribution"],
-      linear.contributions.map((i) => [
-        i.feature,
-        i.value.toFixed(4),
-        i.weight.toFixed(4),
-        i.logit_contribution.toFixed(5),
-      ]),
-    )}</div><h4>Gradient boosting: local group sensitivity</h4><p>${esc(explanation.gradient_boosting.method)}</p><div class="table-scroll">${table(
-      ["Group replaced", "Original score", "Replacement score", "Difference"],
-      explanation.gradient_boosting.sensitivity.map((i) => [
-        i.group,
-        i.original_score.toFixed(5),
-        i.reference_replacement_score.toFixed(5),
-        i.score_difference.toFixed(5),
-      ]),
-    )}</div><h4>GraphSAGE explanation boundary</h4><p>${esc(explanation.graphsage.method)}</p>`;
+  const host = $("prediction-explanation");
+  host.innerHTML = `<div class="finding-controls" aria-label="Select a model explanation">${Object.entries(explanationTitles).map(([id, name]) =>
+    `<button type="button" class="secondary" data-explanation="${id}" aria-controls="explanation-body" aria-pressed="false">${esc(name)}</button>`,
+  ).join("")}</div><div id="explanation-body" aria-live="polite"></div>`;
+  const buttons = host.querySelectorAll("[data-explanation]");
+  const select = (kind) => {
+    explanationModel = kind;
+    buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.explanation === kind)));
+    $("explanation-body").innerHTML = explanationBody(result, kind);
+  };
+  buttons.forEach((button) => button.addEventListener("click", () => select(button.dataset.explanation)));
+  select(explanationModel);
 }
 async function startWorkbench() {
   const startup = $("workbench-startup");
@@ -409,6 +454,8 @@ async function startWorkbench() {
           `<option value="${esc(c.id)}">${esc(c.id)} · ${esc(c.title)}</option>`,
       )
       .join("");
+    const caseId = evidenceLink.get("case");
+    if (cases.some((item) => item.id === caseId)) $("data-case").value = caseId;
     $("load-graph").disabled = false;
     renderEvaluation();
     startup.textContent = "";

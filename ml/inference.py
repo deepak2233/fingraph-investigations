@@ -18,19 +18,27 @@ def examples():
     return json.loads((ROOT / "artifacts/inference_examples.json").read_text())
 
 
-def score(vector):
+def head_activations(vector):
     weights = model()["weights"]
     if len(vector) != len(weights["head.0.weight"][0]) or not all(
         math.isfinite(value) for value in vector
     ):
         raise ValueError("Invalid model feature vector")
-    hidden = [
-        max(0, bias + sum(value * weight for value, weight in zip(vector, row)))
+    return [
+        bias + sum(value * weight for value, weight in zip(vector, row))
         for row, bias in zip(weights["head.0.weight"], weights["head.0.bias"])
     ]
-    logit = weights["head.2.bias"][0] + sum(
-        value * weight for value, weight in zip(hidden, weights["head.2.weight"][0])
+
+
+def head_logit(activations):
+    weights = model()["weights"]
+    return weights["head.2.bias"][0] + sum(
+        max(0, value) * weight for value, weight in zip(activations, weights["head.2.weight"][0])
     )
+
+
+def score(vector):
+    logit = head_logit(head_activations(vector))
     return 1 / (1 + math.exp(-max(-700, min(700, logit))))
 
 
@@ -53,7 +61,10 @@ def predict_example(identifier):
         "graph_cutoff": example["graph_cutoff"],
         "inference": "Live edge-head computation using graph embeddings precomputed before the test period",
         "score_semantics": model()["score_semantics"],
-        "explanations": explain(example["baseline_input"]),
+        "explanations": {
+            **explain(example["baseline_input"]),
+            "graphsage": explain_graphsage(example["head_input"]),
+        },
     }
 
 
@@ -119,7 +130,61 @@ def explain(vector):
             "sensitivity": sorted(changes, key=lambda item: abs(item["score_difference"]), reverse=True),
             "method": "Replace one feature group with values from the first training row and rescore the frozen model. This artificial input may be unrealistic; effects are not additive, causal, or SHAP values.",
         },
-        "graphsage": {
-            "method": "Prediction uses two frozen historical node embeddings plus transaction features. A faithful edge attribution method has not been implemented; the rule graph explains rule findings only."
+    }
+
+
+def relu_active_fraction(start, end):
+    """Length of the interval on which the interpolated preactivation is positive."""
+    if start <= 0 and end <= 0:
+        return 0.0
+    if start >= 0 and end >= 0:
+        return 1.0
+    return max(start, end) / (abs(start) + abs(end))
+
+
+def explain_graphsage(vector):
+    """Exact integrated gradients of the fixed ReLU edge head, using a zero reference."""
+    artifact = model()
+    weights = artifact["weights"]
+    start = weights["head.0.bias"]
+    end = head_activations(vector)
+    hidden_width = len(weights["second.bias"])
+    feature_names = artifact["feature_names"]
+    if 2 * hidden_width + len(feature_names) != len(vector):
+        raise ValueError("GraphSAGE explanation layout does not match the edge head")
+
+    # Along 0 → x, each hidden preactivation is linear in the path coordinate.
+    # Its gradient is active over a known fraction, even when the path crosses zero.
+    output_factors = [
+        weight * relu_active_fraction(a, b)
+        for weight, a, b in zip(weights["head.2.weight"][0], start, end, strict=True)
+    ]
+    terms = [
+        value * math.fsum(weight * factor for weight, factor in zip(column, output_factors, strict=True))
+        for value, column in zip(vector, zip(*weights["head.0.weight"], strict=True), strict=True)
+    ]
+    reference_logit = head_logit(start)
+    logit = head_logit(end)
+    groups = [
+        {"group": "Sender embedding", "logit_contribution": math.fsum(terms[:hidden_width])},
+        {
+            "group": "Receiver embedding",
+            "logit_contribution": math.fsum(terms[hidden_width : 2 * hidden_width]),
         },
+        {"group": "Transaction features", "logit_contribution": math.fsum(terms[2 * hidden_width :])},
+    ]
+    return {
+        "reference_logit": reference_logit,
+        "logit": logit,
+        "reconstruction_error": logit - reference_logit - math.fsum(terms),
+        "groups": groups,
+        "transaction_terms": sorted(
+            (
+                {"feature": name, "logit_contribution": term}
+                for name, term in zip(feature_names, terms[2 * hidden_width :], strict=True)
+            ),
+            key=lambda item: abs(item["logit_contribution"]),
+            reverse=True,
+        ),
+        "method": "Integrated gradients of the edge scorer against an all-zero input. The groups add to the logit change. Embeddings are frozen summaries of graph history, so this method does not attribute individual historical edges. The zero reference is a mathematical baseline, not a transaction.",
     }

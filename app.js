@@ -16,6 +16,8 @@ let cases = [],
   current = null,
   busy = false,
   papers = [];
+let activeFinding = null;
+let focusedTransfer = null;
 const titles = {
   overview: [
     "Understand the investigation.",
@@ -68,7 +70,11 @@ function showView(view) {
   $("page-title").textContent = titles[view][0];
   $("page-subtitle").textContent = titles[view][1];
   $("breadcrumb").textContent = titles[view][2];
-  $("demo-mode-link").href = `${publishedMode ? "/" : "/?mode=published"}#${view}`;
+  const modeUrl = new URL(location.href);
+  if (publishedMode) modeUrl.searchParams.delete("mode");
+  else modeUrl.searchParams.set("mode", "published");
+  modeUrl.hash = view;
+  $("demo-mode-link").href = modeUrl.href;
   history.replaceState(null, "", "#" + view);
   window.scrollTo(0, 0);
   document.dispatchEvent(new CustomEvent("fingraph:view", { detail: view }));
@@ -165,6 +171,8 @@ function choose(id) {
   if (busy) return;
   selected = cases.find((c) => c.id === id);
   current = null;
+  activeFinding = null;
+  focusedTransfer = selected.transactions[0]?.id ?? null;
   queue();
   $("case-id").textContent = id;
   $("case-title").textContent = selected.title;
@@ -176,8 +184,19 @@ function choose(id) {
     '<div class="empty-state"><div class="empty-icon">⌘</div><h3>Inspect the network. Then investigate.</h3><p>The workflow checks graph signals, screening freshness, ownership, and evidence.<br>Every draft requires review.</p></div>';
   $("rule-explainer").classList.add("hidden");
   drawNetwork();
+  renderTransferTimeline();
+  updateTransferFocus();
 }
-function drawNetwork(highlight = []) {
+function bindGraphButton(element, activate) {
+  element.addEventListener("click", activate);
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  });
+}
+function drawNetwork() {
   const active = [
     ...new Set(selected.transactions.flatMap((t) => [t.sender, t.receiver])),
   ];
@@ -185,43 +204,102 @@ function drawNetwork(highlight = []) {
   const n = active.length;
   active.forEach((id, i) => {
     const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
-    coords[id] = [340 + Math.cos(angle) * 220, 155 + Math.sin(angle) * 110];
+    coords[id] = n === 1
+      ? [340, 150]
+      : [340 + Math.cos(angle) * 220, 155 + Math.sin(angle) * 110];
   });
   let lines = "",
     nodes = "";
   for (const t of selected.transactions) {
     const [x1, y1] = coords[t.sender],
       [x2, y2] = coords[t.receiver];
-    const len = Math.hypot(x2 - x1, y2 - y1),
-      dx = (x2 - x1) / len,
-      dy = (y2 - y1) / len;
-    const mx = (x1 + x2) / 2,
-      my = (y1 + y2) / 2;
-    lines += `<line x1="${x1 + dx * 24}" y1="${y1 + dy * 24}" x2="${x2 - dx * 27}" y2="${y2 - dy * 27}" stroke="${highlight.includes(t.id) ? "#bc6335" : "#b8c9d3"}" stroke-width="${highlight.includes(t.id) ? 3 : 1.4}" marker-end="url(#arrow)"/><rect x="${mx - 57}" y="${my - 9}" width="114" height="18" rx="4" fill="white"/><text x="${mx}" y="${my + 3}" text-anchor="middle" font-size="10" fill="#6b8493">${esc(t.id)} · ${esc(t.currency)} ${(Number(t.amount) / 1000).toFixed(1)}k</text>`;
+    const distance = Math.hypot(x2 - x1, y2 - y1);
+    const dx = (x2 - x1) / (distance || 1);
+    const dy = (y2 - y1) / (distance || 1);
+    const path = distance
+      ? `M${x1 + dx * 24} ${y1 + dy * 24} L${x2 - dx * 27} ${y2 - dy * 27}`
+      : `M${x1 - 15} ${y1 - 20} C${x1 - 55} ${y1 - 69} ${x1 + 55} ${y1 - 69} ${x1 + 15} ${y1 - 20}`;
+    const mx = (x1 + x2) / 2;
+    const my = distance ? (y1 + y2) / 2 : y1 - 66;
+    lines += `<g class="transfer-edge" data-graph-transfer="${esc(t.id)}" role="button" tabindex="0" aria-label="Inspect transfer ${esc(t.id)}" aria-pressed="false">
+      <path d="${path}" class="transfer-target"/><path d="${path}" class="transfer-line" marker-end="url(#arrow)"/>
+      <rect x="${mx - 57}" y="${my - 9}" width="114" height="18" rx="4"/>
+      <text x="${mx}" y="${my + 3}" text-anchor="middle" font-size="10">${esc(t.id)} · ${esc(t.currency)} ${(Number(t.amount) / 1000).toFixed(1)}k</text></g>`;
   }
   for (const id of active) {
     const [x, y] = coords[id];
     const a = selected.accounts.find((a) => a.id === id);
-    nodes += `<g class="graph-node" role="button" tabindex="0" data-node="${id}" aria-label="Inspect ${esc(a.name)}"><circle cx="${x}" cy="${y}" r="23" fill="${id === "A001" ? "#e0f2e9" : "#f1f5f8"}" stroke="${id === "A001" ? "#63a68a" : "#9fb5c5"}" stroke-width="1.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="#4d7180">${id.slice(-3)}</text><text x="${x}" y="${y + 40}" text-anchor="middle" font-size="11" fill="#506b7a">${esc(a.name)}</text><text x="${x}" y="${y + 54}" text-anchor="middle" font-size="9" fill="#9ba9b2">${id}</text></g>`;
+    nodes += `<g class="graph-node" role="button" tabindex="0" data-node="${esc(id)}" aria-label="Inspect ${esc(a.name)}"><circle cx="${x}" cy="${y}" r="23" fill="${id === "A001" ? "#e0f2e9" : "#f1f5f8"}" stroke="${id === "A001" ? "#63a68a" : "#9fb5c5"}" stroke-width="1.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="#4d7180">${esc(id.slice(-3))}</text><text x="${x}" y="${y + 40}" text-anchor="middle" font-size="11" fill="#506b7a">${esc(a.name)}</text><text x="${x}" y="${y + 54}" text-anchor="middle" font-size="9" fill="#9ba9b2">${esc(id)}</text></g>`;
   }
   $("network").innerHTML =
     `<svg viewBox="0 0 680 330" role="group" aria-label="${esc(selected.title)} directed transaction network"><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="#9bb1bf"/></marker></defs>${lines}${nodes}</svg>`;
   $("node-detail").textContent =
     "Select an account to inspect its synthetic identity.";
-  document.querySelectorAll("[data-node]").forEach((e) => {
-    const inspect = () => {
-      const a = selected.accounts.find((a) => a.id === e.dataset.node);
+  $("network").querySelectorAll("[data-node]").forEach((node) => {
+    bindGraphButton(node, () => {
+      const a = selected.accounts.find((account) => account.id === node.dataset.node);
       $("node-detail").textContent =
-        `${a.id} · ${a.name} · Holder ${a.holder} · ${selected.missing_ownership && a.id === "A001" ? "Owner assertion unavailable" : `Direct owner assertion ${a.owner} (synthetic registry)`}`;
-    };
-    e.addEventListener("click", inspect);
-    e.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === " ") {
-        ev.preventDefault();
-        inspect();
-      }
+        `${a.id} · ${a.name} · Holder ${a.holder} · ${!a.owner || (selected.missing_ownership && a.id === "A001") ? "Owner assertion unavailable" : `Direct owner assertion ${a.owner} (synthetic registry)`}`;
     });
   });
+  $("network").querySelectorAll("[data-graph-transfer]").forEach((edge) =>
+    bindGraphButton(edge, () => selectTransfer(edge.dataset.graphTransfer)),
+  );
+}
+
+function chronologicalTransfers() {
+  return [...selected.transactions].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+}
+
+function renderTransferTimeline() {
+  $("transfer-evidence").classList.remove("hidden");
+  const timeline = $("transfer-timeline");
+  timeline.innerHTML = chronologicalTransfers().map((t) => `
+    <li><button type="button" data-timeline-transfer="${esc(t.id)}" aria-pressed="false">
+      <span><time datetime="${esc(t.timestamp)}">${esc(new Date(t.timestamp).toISOString().slice(11, 16))} UTC</time><strong>${esc(t.id)}</strong></span>
+      <span>${esc(t.sender)} → ${esc(t.receiver)}</span>
+      <span class="transfer-support-label"></span>
+    </button></li>`).join("");
+  timeline.querySelectorAll("[data-timeline-transfer]").forEach((control) =>
+    control.addEventListener("click", () => selectTransfer(control.dataset.timelineTransfer)),
+  );
+}
+
+function selectTransfer(id) {
+  focusedTransfer = id;
+  updateTransferFocus();
+}
+
+function updateTransferFocus() {
+  const evidence = new Set(activeFinding?.evidence ?? []);
+  const transfers = chronologicalTransfers().filter((t) => evidence.has(t.id));
+  if (transfers.length) {
+    const minutes = (Date.parse(transfers.at(-1).timestamp) - Date.parse(transfers[0].timestamp)) / 60000;
+    $("transfer-summary").textContent = `${transfers.length} supporting transfers over ${Number(minutes.toFixed(2))} minutes`;
+  } else {
+    $("transfer-summary").textContent = `${selected.transactions.length} transfers in source order by time`;
+  }
+  document.querySelectorAll("[data-graph-transfer], [data-timeline-transfer]").forEach((control) => {
+    const id = control.dataset.graphTransfer ?? control.dataset.timelineTransfer;
+    const supported = evidence.has(id);
+    control.classList.toggle("supports-finding", supported);
+    control.setAttribute("aria-pressed", String(id === focusedTransfer));
+    const label = control.querySelector(".transfer-support-label");
+    if (label) label.textContent = supported ? "Rule evidence" : "";
+  });
+  const transaction = selected.transactions.find((t) => t.id === focusedTransfer);
+  if (!transaction) return;
+  const href = new URL(location.href);
+  href.searchParams.set("case", selected.id);
+  href.searchParams.set("resource", `ex:${transaction.id}`);
+  href.hash = "data";
+  $("transfer-detail").innerHTML = `
+    <h4>${esc(transaction.id)} · ${esc(transaction.sender)} → ${esc(transaction.receiver)}</h4>
+    <dl><dt>Amount</dt><dd>${esc(transaction.currency)} ${esc(transaction.amount)}</dd>
+    <dt>Event time</dt><dd>${esc(transaction.timestamp)}</dd>
+    <dt>Source record</dt><dd>${esc(transaction.source_id)}</dd>
+    <dt>Rule evidence</dt><dd>${!activeFinding ? "Select a finding after investigation" : evidence.has(transaction.id) ? `Supports ${esc(activeFinding.id)}` : "Outside the selected finding"}</dd></dl>
+    <a href="${esc(href.href)}">Inspect this RDF resource ↗</a>`;
 }
 $("run").addEventListener("click", async () => {
   if (!selected || busy) return;
@@ -246,7 +324,7 @@ $("run").addEventListener("click", async () => {
     );
     current = { ...response.result, demo_execution: response.origin };
     renderResult();
-    renderRuleExplanation();
+    if (Array.isArray(current.signals)) renderRuleExplanation();
     $("status").textContent = `${demoOrigin(response)} · Analyst review is required.`;
   } catch (e) {
     $("status").className = "error";
@@ -388,6 +466,10 @@ function renderModelInput() {
       "<p>Score this transaction to inspect its prediction explanation.</p>";
 }
 $("model-example").addEventListener("change", renderModelInput);
+$("try-inference").addEventListener("click", () => {
+  $("inference-panel").scrollIntoView({ block: "start" });
+  $("model-example").focus({ preventScroll: true });
+});
 $("score-model").addEventListener("click", async () => {
   const button = $("score-model");
   const example = $("model-example");
@@ -546,14 +628,24 @@ $("evidence-service").addEventListener("click", () =>
 function renderRuleExplanation() {
   const host = $("rule-explainer");
   host.classList.remove("hidden");
-  host.innerHTML = `<h3>Why these findings appeared</h3><p>These are deterministic rule explanations. The orange edges show the source transfers supporting a selected finding.</p>${current.signals.map((signal, i) => `<button class="secondary" data-signal="${i}">${esc(signal.type)} · ${signal.points} points</button>`).join(" ")}<button class="secondary" id="clear-highlight">Show all transfers</button><div id="rule-detail"></div>`;
+  host.innerHTML = `<h3>Why these findings appeared</h3><p>Choose a rule to highlight its supporting transfers in the network and timeline.</p><div class="finding-controls" aria-label="Investigation findings">
+    ${current.signals.map((signal, i) => `<button type="button" class="secondary" data-signal="${i}" aria-pressed="false">${esc(signal.type.replaceAll("_", " "))} · ${signal.points} points</button>`).join(" ")}
+    <button type="button" class="secondary" id="clear-highlight" aria-pressed="false">Show all transfers</button></div><div id="rule-detail" role="status"></div>`;
   const inspect = (signal) => {
-    drawNetwork(signal?.evidence || []);
+    activeFinding = signal ?? null;
+    if (activeFinding && !activeFinding.evidence.includes(focusedTransfer)) {
+      focusedTransfer = chronologicalTransfers().find((t) => activeFinding.evidence.includes(t.id))?.id;
+    }
+    updateTransferFocus();
+    host.querySelectorAll("[data-signal]").forEach((button) =>
+      button.setAttribute("aria-pressed", String(signal === current.signals[Number(button.dataset.signal)])),
+    );
+    $("clear-highlight").setAttribute("aria-pressed", String(!signal));
     $("rule-detail").innerHTML = signal
       ? `<p><b>${esc(signal.id)}</b> · ${esc(signal.description)}</p><p>Rule evidence: ${signal.evidence.map(esc).join(", ")}. Prioritisation points are configured constants, not learned probabilities.</p><p>Alternative explanation to investigate: legitimate supplier settlement, treasury movement or intercompany cash management. Obtain economic purpose and source-of-funds evidence before escalation.</p>`
-      : "<p>No finding is selected. No configured signal does not establish legitimate activity.</p>";
+      : `<p>${current.signals.length ? "Showing all source transfers." : "None of the configured transaction patterns matched this case. Check the draft for evidence gaps."}</p>`;
   };
-  document
+  host
     .querySelectorAll("[data-signal]")
     .forEach((b) =>
       b.addEventListener("click", () =>

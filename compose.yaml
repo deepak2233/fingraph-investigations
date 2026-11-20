@@ -59,10 +59,20 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://fingraph:localdev@postgres:5432/fingraph
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-    volumes: ["graphs:/app/var"]
     depends_on:
       migrate: {condition: service_completed_successfully}
       topic-init: {condition: service_completed_successfully}
+    restart: on-failure
+  projector:
+    build: .
+    command: ["python", "-m", "pipeline.projector"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://fingraph:localdev@postgres:5432/fingraph
+      NEPTUNE_ENDPOINT: ${NEPTUNE_ENDPOINT:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    volumes: ["graphs:/app/var"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
     restart: on-failure
 volumes:
   postgres:

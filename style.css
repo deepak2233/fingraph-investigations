@@ -1207,6 +1207,158 @@ summary {
   padding: 6px 0;
   line-height: 1.8;
 }
+.finding-controls,
+.timeline-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.finding-controls {
+  margin: 14px 0;
+}
+.finding-controls button[aria-pressed="true"] {
+  background: #e4f3ee;
+  border-color: #087f68;
+  color: #065e4e;
+}
+.timeline-heading {
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 10px;
+}
+.timeline-heading p {
+  margin: 6px 0;
+  color: #526674;
+}
+#transfer-summary {
+  color: #5b4a39;
+  background: #faf2e8;
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.transfer-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+#transfer-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+#transfer-timeline button {
+  width: 100%;
+  background: #f6f9fa;
+  border: 1px solid #e0e8eb;
+  border-left: 4px solid #c9d7de;
+  border-radius: 5px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  text-align: left;
+  color: #233b49;
+  font-size: 12px;
+}
+#transfer-timeline time {
+  color: #586e7b;
+  margin-right: 8px;
+}
+#transfer-timeline .supports-finding {
+  border-left-color: #bc6335;
+}
+#transfer-timeline [aria-pressed="true"] {
+  background: #eaf1fa;
+  border-top-color: #5075a3;
+  border-right-color: #5075a3;
+  border-bottom-color: #5075a3;
+}
+.transfer-support-label {
+  margin-left: auto;
+  color: #853e21;
+}
+#transfer-detail {
+  border: 1px solid #dfe8e9;
+  border-radius: 6px;
+  padding: 16px;
+}
+#transfer-detail dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 12px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#transfer-detail dt {
+  font-weight: 600;
+}
+#transfer-detail dd {
+  margin: 0;
+}
+#transfer-detail a {
+  color: #076a58;
+  text-decoration: underline;
+}
+.legend.evidence-edge { background: #bc6335; }
+.legend.selected-edge { background: #325e9f; }
+.transfer-edge { cursor: pointer; }
+.transfer-edge rect { fill: white; }
+.transfer-edge text { fill: #516a79; }
+.transfer-target, .transfer-line { fill: none; }
+.transfer-target { stroke: transparent; stroke-width: 16; }
+.transfer-line { stroke: #bacbd4; stroke-width: 1.5; }
+.supports-finding .transfer-line { stroke: #bc6335; stroke-width: 3; }
+.transfer-edge[aria-pressed="true"] .transfer-line { stroke: #325e9f; stroke-width: 4; }
+.transfer-edge[aria-pressed="true"] rect { fill: #eaf1fa; }
+.transfer-edge[aria-pressed="true"] text { fill: #284d80; }
+.transfer-edge:focus-visible { outline: 2px solid #325e9f; }
+.signed-chart {
+  margin: 14px 0;
+  max-width: 840px;
+}
+.signed-key {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 68px 6px min(32%, 225px);
+  color: #526674;
+  font-size: 11px;
+}
+.signed-row {
+  display: grid;
+  grid-template-columns: min(32%, 225px) minmax(40px, 1fr) 62px;
+  gap: 7px;
+  align-items: center;
+  padding: 5px 0;
+  color: #223744;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.signed-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.signed-track {
+  position: relative;
+  height: 13px;
+  border-radius: 3px;
+  background: #eef3f5;
+  overflow: hidden;
+}
+.signed-track::before {
+  content: "";
+  background: #798e9c;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  position: absolute;
+}
+.signed-track i { position: absolute; top: 2px; bottom: 2px; width: var(--size); border-radius: 2px; }
+.signed-track .negative { right: 50%; background: #586caa; }
+.signed-track .positive { left: 50%; background: #087f68; }
+@media (max-width: 650px) {
+  .transfer-workbench { grid-template-columns: 1fr; }
+}
 .metric-chart {
   width: 100%;
   height: auto;

@@ -18,11 +18,11 @@ from api.explorer import Query, Variant, explore, ontology_schema
 from ml.inference import examples, predict_example
 from pipeline.auth import Principal, principal
 from pipeline.contracts import CaseEvent, Review
-from pipeline.service import InvestigationService
+from pipeline.service import InvalidEvidence, InvestigationService
 from pipeline.store import Conflict, NotFound, Store
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 DEMO_ASSETS = {"demo/catalog.json", "demo/scores.json", *(f"demo/{case['id']}.json" for case in CASES)}
 logger = logging.getLogger("fingraph.api")
 
@@ -92,6 +92,11 @@ async def conflict(_, exc):
 @app.exception_handler(NotFound)
 async def missing(_, exc):
     return JSONResponse({"detail": str(exc)}, status_code=404)
+
+
+@app.exception_handler(InvalidEvidence)
+async def invalid_evidence(_, exc):
+    return JSONResponse({"detail": str(exc)}, status_code=422)
 
 
 class InvestigationRequest(BaseModel):

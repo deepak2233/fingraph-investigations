@@ -1,5 +1,7 @@
 """SigV4-authenticated RDF projection with tenant-specific named graphs."""
 
+import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -10,6 +12,8 @@ import httpx
 
 from api.core import graph_for
 from pipeline.store import digest
+
+logger = logging.getLogger("fingraph.projection")
 
 
 def graph_name(tenant, run_id):
@@ -70,15 +74,14 @@ class FileProjection:
         os.replace(temporary, target)
 
 
-def project_pending(store, projection):
-    import json
-
+def project_pending(store, projection, limit=50):
     completed = 0
-    for row in store.pending_projections():
+    for row in store.pending_projections(limit):
         try:
             projection.write(row["tenant"], row["case_id"], json.loads(row["payload"]))
         except (httpx.HTTPError, OSError, RuntimeError) as exc:
             store.projection_result(row["id"], type(exc).__name__)
+            logger.warning("Graph projection remains pending (%s)", type(exc).__name__)
         else:
             store.projection_result(row["id"])
             completed += 1

@@ -1,0 +1,85 @@
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const path = require("node:path");
+const { test } = require("node:test");
+const { runInNewContext } = require("node:vm");
+
+const script = readFileSync(path.join(__dirname, "../app.js"), "utf8");
+
+function workbench(hash) {
+  const location = new URL(`https://fingraph.example/?mode=published&case=FG-004${hash}`);
+  const entries = [];
+  const views = ["overview", "data", "models", "investigation"].map((id) => ({
+    id,
+    classList: { toggle(name, value) { this[name] = value; } },
+  }));
+  const buttons = views.map(({ id }) => Object.assign(new EventTarget(), {
+    dataset: { view: id },
+    classList: { toggle(name, value) { this[name] = value; } },
+    setAttribute(name, value) { this[name] = value; },
+    removeAttribute(name) { delete this[name]; },
+  }));
+  const elements = new Map();
+  const document = Object.assign(new EventTarget(), {
+    currentScript: { src: new URL("/app.js", location).href },
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, new EventTarget());
+      return elements.get(id);
+    },
+    querySelectorAll(selector) {
+      return { ".view": views, ".nav": buttons }[selector];
+    },
+  });
+  const window = Object.assign(new EventTarget(), { scrollTo() {} });
+  const history = {
+    pushState(_state, _unused, hash) {
+      location.hash = hash;
+      entries.push(hash);
+    },
+  };
+  const rendered = [];
+  document.addEventListener("fingraph:view", (event) => rendered.push(event.detail));
+  runInNewContext(script, { document, location, history, window, URL, URLSearchParams, CustomEvent });
+  return {
+    entries,
+    rendered,
+    location,
+    modeLink: elements.get("demo-mode-link"),
+    visible: () => views.filter((view) => !view.classList.hidden).map((view) => view.id),
+    active: () => buttons.find((button) => button["aria-current"] === "page")?.dataset.view,
+    click(view) {
+      buttons.find((button) => button.dataset.view === view).dispatchEvent(new Event("click"));
+    },
+    navigate(hash, event = "hashchange") {
+      location.hash = hash;
+      window.dispatchEvent(new Event(event));
+    },
+  };
+}
+
+test("direct links, buttons, and browser history keep the section in sync", () => {
+  const app = workbench("#data");
+  assert.deepEqual(app.visible(), ["data"]);
+  app.navigate("#models");
+  assert.deepEqual(app.visible(), ["models"]);
+  assert.equal(app.active(), "models");
+  app.click("overview");
+  assert.equal(app.location.hash, "#overview");
+  assert.deepEqual(app.entries, ["#overview"]);
+  app.navigate("#models", "popstate");
+  app.navigate("#models");
+  assert.deepEqual(app.visible(), ["models"]);
+  assert.deepEqual(app.rendered, ["data", "models", "overview", "models"]);
+  assert.equal(app.modeLink.href, "https://fingraph.example/?case=FG-004#models");
+});
+
+test("evidence citations preserve the investigation and its anchor", () => {
+  const app = workbench("#investigation");
+  app.navigate("#evidence-E-T003");
+  assert.deepEqual(app.visible(), ["investigation"]);
+  assert.equal(app.location.hash, "#evidence-E-T003");
+  assert.deepEqual(app.rendered, ["investigation"]);
+  assert.deepEqual(app.entries, []);
+  app.navigate("#unknown");
+  assert.deepEqual(app.visible(), ["overview"]);
+});

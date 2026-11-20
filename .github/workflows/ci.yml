@@ -28,6 +28,7 @@ jobs:
       - run: python -m pytest -q --disable-warnings
       - run: python -m scripts.export_workbench --check
       - run: node --check app.js && node --check lab.js
+      - run: node --test tests/workbench.test.cjs
       - run: python -m compileall -q api pipeline ml
   kafka-postgres:
     runs-on: ubuntu-latest

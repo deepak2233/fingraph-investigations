@@ -8,9 +8,9 @@
       content="FinGraph financial crime investigation research workbench. Explore evidence-backed graph signals and an ontology-driven architecture using synthetic examples."
     />
     <title>FinGraph | Investigation Workbench</title>
-    <link rel="stylesheet" href="/style.css?v=0.4.0" />
-    <script src="/app.js?v=0.4.0" defer></script>
-    <script src="/lab.js?v=0.4.0" defer></script>
+    <link rel="stylesheet" href="/style.css?v=0.4.1" />
+    <script src="/app.js?v=0.4.1" defer></script>
+    <script src="/lab.js?v=0.4.1" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -40,7 +40,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="avatar">DY</div>
-        <div>Deepak Yadav<small>Research project · v0.4.0</small></div>
+        <div>Deepak Yadav<small>Research project · v0.4.1</small></div>
       </div>
     </aside>
     <div class="shell">
@@ -222,9 +222,10 @@
           <div class="panel padded space-top">
             <h3>Execute a bounded SPARQL query</h3>
             <p>
-              Choose a template above and rebuild. Invalid graphs remain
-              inspectable for this exercise; they cannot proceed into the
-              investigation pipeline.
+              Changing a selection loads a published example. In live API mode,
+              select Build and validate graph to run the query and validation
+              again. You can inspect invalid graphs here. They are blocked from
+              the investigation pipeline.
             </p>
             <pre id="sparql-source"></pre>
             <div class="table-scroll" id="sparql-rows"></div>

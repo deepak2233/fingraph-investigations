@@ -1,7 +1,7 @@
 "use strict";
 // Both the live and published views use projections produced by the Python implementation.
 let explored = null;
-let graphLoading = false;
+let explorerRequest = 0;
 const evidenceLink = new URLSearchParams(location.search);
 const colors = {
   directed_graphsage: "#7561b0",
@@ -53,12 +53,11 @@ function bars(rows, label, scale = 1) {
 }
 async function loadExplorer(preferPublished = false) {
   const source = cases.find((item) => item.id === $("data-case").value);
-  if (graphLoading || !source) return;
+  if (!source) return;
   const variant = $("graph-variant").value;
   const query = $("graph-query").value;
-  const controls = ["data-case", "graph-variant", "graph-query", "load-graph"];
-  graphLoading = true;
-  controls.forEach((id) => ($(id).disabled = true));
+  const requestId = ++explorerRequest;
+  $("load-graph").disabled = true;
   $("data-status").textContent = preferPublished || publishedMode
     ? "Loading the published graph…"
     : "Building RDF and running SHACL…";
@@ -73,6 +72,7 @@ async function loadExplorer(preferPublished = false) {
       },
       preferPublished,
     );
+    if (requestId !== explorerRequest) return;
     const focus = explored?.case_id === source.id ? $("rdf-focus").value : evidenceLink.get("resource");
     explored = response.result;
     $("data-status").textContent = `${demoOrigin(response)} · ${explored.mutation}`;
@@ -147,10 +147,11 @@ async function loadExplorer(preferPublished = false) {
         )
       : "<p>No matching rows. An empty result is not proof that an owner or relationship does not exist outside this graph.</p>";
   } catch (e) {
-    $("data-status").textContent = `${e.message} Select Build and validate graph to retry.`;
+    if (requestId === explorerRequest) {
+      $("data-status").textContent = `${e.message} Select Build and validate graph to retry.`;
+    }
   } finally {
-    graphLoading = false;
-    controls.forEach((id) => ($(id).disabled = false));
+    if (requestId === explorerRequest) $("load-graph").disabled = false;
   }
 }
 function renderTriples() {
@@ -467,14 +468,11 @@ async function startWorkbench() {
 }
 $("retry-workbench").addEventListener("click", startWorkbench);
 $("load-graph").addEventListener("click", () => loadExplorer());
-$("data-case").addEventListener("change", () => loadExplorer(true));
-for (const id of ["graph-variant", "graph-query"]) {
-  $(id).addEventListener("change", () => {
-    $("data-status").textContent = "Settings updated. Build the graph to view the selected exercise.";
-  });
+for (const id of ["data-case", "graph-variant", "graph-query"]) {
+  $(id).addEventListener("change", () => loadExplorer(true));
 }
 document.addEventListener("fingraph:view", (event) => {
-  if (event.detail === "data" && !explored) loadExplorer(true);
+  if (event.detail === "data" && !explored && !$("load-graph").disabled) loadExplorer(true);
 });
 $("rdf-focus").addEventListener("change", renderRdfFocus);
 $("triple-filter").addEventListener("input", renderTriples);

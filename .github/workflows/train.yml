@@ -19,13 +19,18 @@ jobs:
       - name: Install CPU training environment
         run: |
           pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements-ml.txt
+          pip install -r requirements-ml.txt -r requirements.txt
       - name: Fetch checksum-verified public source
         run: |
           mkdir -p data/raw
           curl --fail --location --retry 3 --max-time 600 'https://www.kaggle.com/api/v1/datasets/download/ealtman2019/ibm-transactions-for-anti-money-laundering-aml/HI-Small_Trans.csv' -o data/raw/HI-Small_Trans.csv
           python -m ml.prepare --input data/raw/HI-Small_Trans.csv
       - run: python -m ml.train --epochs 20
+      - name: Evaluate the rolling detection pipeline
+        run: >
+          python -m ml.rolling_benchmark
+          --input data/raw/HI-Small_Trans.csv
+          --output artifacts/rolling_benchmark.json
       - uses: actions/upload-artifact@v4
         with:
           name: aml-models-and-evaluation

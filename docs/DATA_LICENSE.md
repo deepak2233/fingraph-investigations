@@ -9,4 +9,6 @@ The model experiment uses IBM AMLworld HI-Small, distributed by Erik Altman and 
 
 The source data is licensed under CDLA-Sharing-1.0. The small derivative excerpt in `artifacts/inference_examples.json` is distributed under those same data terms with this attribution. Changes include row selection, bank-scoped account identifiers, ISO timestamps, graph features, and reference model outputs. The complete source CSV is excluded from the repository.
 
+`artifacts/rolling_benchmark.json` contains aggregate evaluation results, hashed case IDs and source-row references derived from the same licensed source.
+
 `data/cases.json` and `data/ledger_snapshot.json` are authored synthetic examples created for FinGraph. They are separate from the IBM dataset.

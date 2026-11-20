@@ -4,6 +4,8 @@ Audit of the FinGraph v0.4.2 implementation at commit `dfe0a61`, 20 November 202
 
 **Decision. Keep live AML alert generation and case prioritisation with the institution's existing controls.** FinGraph can exercise a synthetic investigation and the database review workflow. It has yet to demonstrate detection coverage, analyst workload, or institutional control effectiveness. The first institutional evaluation should be read-only enrichment of alerts from one existing queue, with the access, evidence, and monitoring controls below in place.
 
+The follow-up rolling benchmark measures full-history features across two holdouts and sends model-ranked synthetic account-day groups through the investigation service. [Rolling comparison and handoff](ROLLING_BENCHMARK.md)
+
 ## What the code does today
 
 The candidate builder reads a bounded ledger file and emits cases when a deterministic rule fires. The worker investigates and stores preassembled case events. The public model API scores a stored example by ID. These paths have independent inputs and outputs. No trained model is called by the candidate builder, Kafka worker, or investigator. An authenticated API, a graph projection, and replay tests establish engineering behaviour for those paths.

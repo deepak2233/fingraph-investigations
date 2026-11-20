@@ -4,7 +4,7 @@ FinGraph is an investigation workbench for anti-money laundering (AML) teams. Gi
 
 [Live demo](https://fingraph-investigations.vercel.app/) · [Architecture](docs/ARCHITECTURE.md) · [Runbook](docs/RUNBOOK.md) · [CI](https://github.com/deepak2233/fingraph-investigations/actions/workflows/ci.yml)
 
-This is a personal research project. The public demo uses synthetic data. The Docker stack demonstrates durable case storage and review. Candidate selection uses two rules and model scoring runs as a separate experiment. The current release has no case-level detection validation or live screening integration. [Production readiness review and pilot gates](docs/PRODUCTION_READINESS.md)
+This is a personal research project. The public demo uses synthetic data. The Docker stack demonstrates durable case storage and review. The public workbench has rule-based investigations and a separate inference lab. The rolling benchmark connects offline model ranking to the existing investigation service for synthetic account-day cases. [Production readiness review and pilot gates](docs/PRODUCTION_READINESS.md) · [Rolling benchmark](docs/ROLLING_BENCHMARK.md)
 
 ## Where it fits
 
@@ -65,6 +65,8 @@ The holdout contains **43,126 transfers and 74 labelled positives**. All models 
 Gradient boosting led on validation average precision and retained the lead on test. Accuracy alone would hide the workload. An always-negative model gets 99.83% accuracy while finding zero positives. The 5% sample removes graph connections, and the experiment uses one synthetic holdout. A full-graph comparison over several time windows is needed before recommending a model for a bank. [Full metrics](artifacts/evaluation.json) · [Reproduce training](docs/RUNBOOK.md#reproduce-the-benchmark)
 
 In a follow-up experiment, restoring full pre-cutoff history for the tree model's degree features raised test average precision from 0.0900 to 0.1090, with the same labelled targets and review budget. Positives found rose from 29 to 30 out of the top 432. The review documents the measured coverage, remaining investigation gaps, and case-level tests needed for a pilot. [History ablation](docs/PRODUCTION_READINESS.md#experiment-on-full-historical-context)
+
+The rolling benchmark processes **all 5,078,345 transfers**. At a budget of 100 sender-day groups, adding graph features to the behavior model raised positive groups found from 70 to 90 and from 67 to 87 across two temporal holdouts. The three model-selected preview cases passed validation and retained their source references after replay. [Results and run command](docs/ROLLING_BENCHMARK.md) · [Benchmark JSON](artifacts/rolling_benchmark.json)
 
 The explanations answer different questions. The investigation timeline shows the exact transfers used by a rule. Logistic terms reconstruct the model logit. The tree view replaces one feature group and shows how the score changes. GraphSAGE separates contributions from sender, receiver, and transaction inputs to its fitted scorer. Attribution to individual historical transfers remains open.
 

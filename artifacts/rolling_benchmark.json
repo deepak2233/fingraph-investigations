@@ -1,0 +1,586 @@
+{
+  "source": "IBM AMLworld HI-Small",
+  "source_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "source_rows": 5078345,
+  "source_positives": 5177,
+  "software": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scikit_learn": "1.8.0"
+  },
+  "history_policy": "All prior event minutes, with simultaneous transactions read before any update",
+  "case_policy": "One sender account and UTC day, max transfer score and any labelled outgoing positive",
+  "behavior_features": [
+    "sender_debit_count_24h",
+    "sender_credit_count_24h",
+    "receiver_debit_count_24h",
+    "receiver_credit_count_24h",
+    "sender_in_out_ratio_24h",
+    "sender_same_currency_debit_history_24h",
+    "sender_recent_inflow_coverage_2h"
+  ],
+  "network_features": [
+    "unique_beneficiaries_24h",
+    "receiver_unique_originators_24h",
+    "counterparty_novelty",
+    "reverse_pair_count_24h"
+  ],
+  "transaction_budget": 432,
+  "case_budget": 100,
+  "folds": [
+    {
+      "boundaries_utc": [
+        "2022-09-03",
+        "2022-09-06",
+        "2022-09-07",
+        "2022-09-09"
+      ],
+      "training_rows": 897462,
+      "training_positives": 1269,
+      "selected_on_validation_case_average_precision": "boosting_graph",
+      "models": {
+        "logistic_transaction": {
+          "validation": {
+            "transactions": {
+              "population": 482089,
+              "positive_labels": 531,
+              "average_precision": 0.017656264511569205,
+              "reviewed": 432,
+              "positives_found": 11,
+              "labelled_negatives_reviewed": 421,
+              "positives_missed": 520,
+              "precision": 0.02546296296296296,
+              "recall": 0.02071563088512241
+            },
+            "account_days": {
+              "population": 119982,
+              "positive_labels": 432,
+              "average_precision": 0.019773935365050673,
+              "reviewed": 100,
+              "positives_found": 5,
+              "labelled_negatives_reviewed": 95,
+              "positives_missed": 427,
+              "precision": 0.05,
+              "recall": 0.011574074074074073
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 965524,
+              "positive_labels": 1036,
+              "average_precision": 0.01437866726380128,
+              "reviewed": 432,
+              "positives_found": 11,
+              "labelled_negatives_reviewed": 421,
+              "positives_missed": 1025,
+              "precision": 0.02546296296296296,
+              "recall": 0.010617760617760617
+            },
+            "account_days": {
+              "population": 241140,
+              "positive_labels": 788,
+              "average_precision": 0.015051914731655004,
+              "reviewed": 100,
+              "positives_found": 4,
+              "labelled_negatives_reviewed": 96,
+              "positives_missed": 784,
+              "precision": 0.04,
+              "recall": 0.005076142131979695
+            }
+          }
+        },
+        "boosting_transaction": {
+          "validation": {
+            "transactions": {
+              "population": 482089,
+              "positive_labels": 531,
+              "average_precision": 0.04479167644713173,
+              "reviewed": 432,
+              "positives_found": 30,
+              "labelled_negatives_reviewed": 402,
+              "positives_missed": 501,
+              "precision": 0.06944444444444445,
+              "recall": 0.05649717514124294
+            },
+            "account_days": {
+              "population": 119982,
+              "positive_labels": 432,
+              "average_precision": 0.04645605146953842,
+              "reviewed": 100,
+              "positives_found": 7,
+              "labelled_negatives_reviewed": 93,
+              "positives_missed": 425,
+              "precision": 0.07,
+              "recall": 0.016203703703703703
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 965524,
+              "positive_labels": 1036,
+              "average_precision": 0.044766991078779884,
+              "reviewed": 432,
+              "positives_found": 35,
+              "labelled_negatives_reviewed": 397,
+              "positives_missed": 1001,
+              "precision": 0.08101851851851852,
+              "recall": 0.033783783783783786
+            },
+            "account_days": {
+              "population": 241140,
+              "positive_labels": 788,
+              "average_precision": 0.043780112161222455,
+              "reviewed": 100,
+              "positives_found": 9,
+              "labelled_negatives_reviewed": 91,
+              "positives_missed": 779,
+              "precision": 0.09,
+              "recall": 0.011421319796954314
+            }
+          }
+        },
+        "boosting_behavior": {
+          "validation": {
+            "transactions": {
+              "population": 482089,
+              "positive_labels": 531,
+              "average_precision": 0.2346761327959386,
+              "reviewed": 432,
+              "positives_found": 133,
+              "labelled_negatives_reviewed": 299,
+              "positives_missed": 398,
+              "precision": 0.30787037037037035,
+              "recall": 0.2504708097928437
+            },
+            "account_days": {
+              "population": 119982,
+              "positive_labels": 432,
+              "average_precision": 0.23958870240751942,
+              "reviewed": 100,
+              "positives_found": 63,
+              "labelled_negatives_reviewed": 37,
+              "positives_missed": 369,
+              "precision": 0.63,
+              "recall": 0.14583333333333334
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 965524,
+              "positive_labels": 1036,
+              "average_precision": 0.20238519994073287,
+              "reviewed": 432,
+              "positives_found": 188,
+              "labelled_negatives_reviewed": 244,
+              "positives_missed": 848,
+              "precision": 0.4351851851851852,
+              "recall": 0.18146718146718147
+            },
+            "account_days": {
+              "population": 241140,
+              "positive_labels": 788,
+              "average_precision": 0.2227111151260253,
+              "reviewed": 100,
+              "positives_found": 70,
+              "labelled_negatives_reviewed": 30,
+              "positives_missed": 718,
+              "precision": 0.7,
+              "recall": 0.08883248730964467
+            }
+          }
+        },
+        "boosting_graph": {
+          "validation": {
+            "transactions": {
+              "population": 482089,
+              "positive_labels": 531,
+              "average_precision": 0.32967752721778537,
+              "reviewed": 432,
+              "positives_found": 170,
+              "labelled_negatives_reviewed": 262,
+              "positives_missed": 361,
+              "precision": 0.39351851851851855,
+              "recall": 0.32015065913371
+            },
+            "account_days": {
+              "population": 119982,
+              "positive_labels": 432,
+              "average_precision": 0.3209527820685713,
+              "reviewed": 100,
+              "positives_found": 66,
+              "labelled_negatives_reviewed": 34,
+              "positives_missed": 366,
+              "precision": 0.66,
+              "recall": 0.1527777777777778
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 965524,
+              "positive_labels": 1036,
+              "average_precision": 0.3767563466378694,
+              "reviewed": 432,
+              "positives_found": 272,
+              "labelled_negatives_reviewed": 160,
+              "positives_missed": 764,
+              "precision": 0.6296296296296297,
+              "recall": 0.2625482625482625
+            },
+            "account_days": {
+              "population": 241140,
+              "positive_labels": 788,
+              "average_precision": 0.34571118692424235,
+              "reviewed": 100,
+              "positives_found": 90,
+              "labelled_negatives_reviewed": 10,
+              "positives_missed": 698,
+              "precision": 0.9,
+              "recall": 0.11421319796954314
+            }
+          }
+        }
+      }
+    },
+    {
+      "boundaries_utc": [
+        "2022-09-03",
+        "2022-09-08",
+        "2022-09-09",
+        "2022-09-11"
+      ],
+      "training_rows": 1862302,
+      "training_positives": 2297,
+      "selected_on_validation_case_average_precision": "boosting_graph",
+      "models": {
+        "logistic_transaction": {
+          "validation": {
+            "transactions": {
+              "population": 482773,
+              "positive_labels": 539,
+              "average_precision": 0.015259528626565577,
+              "reviewed": 432,
+              "positives_found": 10,
+              "labelled_negatives_reviewed": 422,
+              "positives_missed": 529,
+              "precision": 0.023148148148148147,
+              "recall": 0.01855287569573284
+            },
+            "account_days": {
+              "population": 120603,
+              "positive_labels": 417,
+              "average_precision": 0.015629444669191753,
+              "reviewed": 100,
+              "positives_found": 3,
+              "labelled_negatives_reviewed": 97,
+              "positives_missed": 414,
+              "precision": 0.03,
+              "recall": 0.007194244604316547
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 862792,
+              "positive_labels": 956,
+              "average_precision": 0.014535792424173126,
+              "reviewed": 432,
+              "positives_found": 6,
+              "labelled_negatives_reviewed": 426,
+              "positives_missed": 950,
+              "precision": 0.013888888888888888,
+              "recall": 0.006276150627615063
+            },
+            "account_days": {
+              "population": 282207,
+              "positive_labels": 754,
+              "average_precision": 0.015387814486173464,
+              "reviewed": 100,
+              "positives_found": 1,
+              "labelled_negatives_reviewed": 99,
+              "positives_missed": 753,
+              "precision": 0.01,
+              "recall": 0.001326259946949602
+            }
+          },
+          "sparse_tail": {
+            "transactions": {
+              "population": 1108,
+              "positive_labels": 655,
+              "average_precision": 0.9553207970048351,
+              "reviewed": 432,
+              "positives_found": 419,
+              "labelled_negatives_reviewed": 13,
+              "positives_missed": 236,
+              "precision": 0.9699074074074074,
+              "recall": 0.6396946564885496
+            },
+            "account_days": {
+              "population": 480,
+              "positive_labels": 480,
+              "average_precision": null,
+              "reviewed": 100,
+              "positives_found": 100,
+              "labelled_negatives_reviewed": 0,
+              "positives_missed": 380,
+              "precision": 1.0,
+              "recall": 0.20833333333333334
+            }
+          }
+        },
+        "boosting_transaction": {
+          "validation": {
+            "transactions": {
+              "population": 482773,
+              "positive_labels": 539,
+              "average_precision": 0.04500676869984967,
+              "reviewed": 432,
+              "positives_found": 35,
+              "labelled_negatives_reviewed": 397,
+              "positives_missed": 504,
+              "precision": 0.08101851851851852,
+              "recall": 0.06493506493506493
+            },
+            "account_days": {
+              "population": 120603,
+              "positive_labels": 417,
+              "average_precision": 0.044750523480895914,
+              "reviewed": 100,
+              "positives_found": 2,
+              "labelled_negatives_reviewed": 98,
+              "positives_missed": 415,
+              "precision": 0.02,
+              "recall": 0.004796163069544364
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 862792,
+              "positive_labels": 956,
+              "average_precision": 0.04779034635032285,
+              "reviewed": 432,
+              "positives_found": 35,
+              "labelled_negatives_reviewed": 397,
+              "positives_missed": 921,
+              "precision": 0.08101851851851852,
+              "recall": 0.036610878661087864
+            },
+            "account_days": {
+              "population": 282207,
+              "positive_labels": 754,
+              "average_precision": 0.04712444200568293,
+              "reviewed": 100,
+              "positives_found": 2,
+              "labelled_negatives_reviewed": 98,
+              "positives_missed": 752,
+              "precision": 0.02,
+              "recall": 0.002652519893899204
+            }
+          },
+          "sparse_tail": {
+            "transactions": {
+              "population": 1108,
+              "positive_labels": 655,
+              "average_precision": 0.9705985210089473,
+              "reviewed": 432,
+              "positives_found": 425,
+              "labelled_negatives_reviewed": 7,
+              "positives_missed": 230,
+              "precision": 0.9837962962962963,
+              "recall": 0.648854961832061
+            },
+            "account_days": {
+              "population": 480,
+              "positive_labels": 480,
+              "average_precision": null,
+              "reviewed": 100,
+              "positives_found": 100,
+              "labelled_negatives_reviewed": 0,
+              "positives_missed": 380,
+              "precision": 1.0,
+              "recall": 0.20833333333333334
+            }
+          }
+        },
+        "boosting_behavior": {
+          "validation": {
+            "transactions": {
+              "population": 482773,
+              "positive_labels": 539,
+              "average_precision": 0.2018584691849513,
+              "reviewed": 432,
+              "positives_found": 130,
+              "labelled_negatives_reviewed": 302,
+              "positives_missed": 409,
+              "precision": 0.30092592592592593,
+              "recall": 0.24118738404452691
+            },
+            "account_days": {
+              "population": 120603,
+              "positive_labels": 417,
+              "average_precision": 0.22402197107826857,
+              "reviewed": 100,
+              "positives_found": 62,
+              "labelled_negatives_reviewed": 38,
+              "positives_missed": 355,
+              "precision": 0.62,
+              "recall": 0.1486810551558753
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 862792,
+              "positive_labels": 956,
+              "average_precision": 0.18888554159019674,
+              "reviewed": 432,
+              "positives_found": 175,
+              "labelled_negatives_reviewed": 257,
+              "positives_missed": 781,
+              "precision": 0.4050925925925926,
+              "recall": 0.18305439330543932
+            },
+            "account_days": {
+              "population": 282207,
+              "positive_labels": 754,
+              "average_precision": 0.2021455684789115,
+              "reviewed": 100,
+              "positives_found": 67,
+              "labelled_negatives_reviewed": 33,
+              "positives_missed": 687,
+              "precision": 0.67,
+              "recall": 0.08885941644562334
+            }
+          },
+          "sparse_tail": {
+            "transactions": {
+              "population": 1108,
+              "positive_labels": 655,
+              "average_precision": 0.9695493092682095,
+              "reviewed": 432,
+              "positives_found": 421,
+              "labelled_negatives_reviewed": 11,
+              "positives_missed": 234,
+              "precision": 0.9745370370370371,
+              "recall": 0.6427480916030535
+            },
+            "account_days": {
+              "population": 480,
+              "positive_labels": 480,
+              "average_precision": null,
+              "reviewed": 100,
+              "positives_found": 100,
+              "labelled_negatives_reviewed": 0,
+              "positives_missed": 380,
+              "precision": 1.0,
+              "recall": 0.20833333333333334
+            }
+          }
+        },
+        "boosting_graph": {
+          "validation": {
+            "transactions": {
+              "population": 482773,
+              "positive_labels": 539,
+              "average_precision": 0.3650025277751739,
+              "reviewed": 432,
+              "positives_found": 193,
+              "labelled_negatives_reviewed": 239,
+              "positives_missed": 346,
+              "precision": 0.44675925925925924,
+              "recall": 0.3580705009276438
+            },
+            "account_days": {
+              "population": 120603,
+              "positive_labels": 417,
+              "average_precision": 0.34129106383881896,
+              "reviewed": 100,
+              "positives_found": 70,
+              "labelled_negatives_reviewed": 30,
+              "positives_missed": 347,
+              "precision": 0.7,
+              "recall": 0.16786570743405277
+            }
+          },
+          "test": {
+            "transactions": {
+              "population": 862792,
+              "positive_labels": 956,
+              "average_precision": 0.35637599343085763,
+              "reviewed": 432,
+              "positives_found": 255,
+              "labelled_negatives_reviewed": 177,
+              "positives_missed": 701,
+              "precision": 0.5902777777777778,
+              "recall": 0.26673640167364016
+            },
+            "account_days": {
+              "population": 282207,
+              "positive_labels": 754,
+              "average_precision": 0.3451319882855015,
+              "reviewed": 100,
+              "positives_found": 87,
+              "labelled_negatives_reviewed": 13,
+              "positives_missed": 667,
+              "precision": 0.87,
+              "recall": 0.11538461538461539
+            }
+          },
+          "sparse_tail": {
+            "transactions": {
+              "population": 1108,
+              "positive_labels": 655,
+              "average_precision": 0.9719851397445907,
+              "reviewed": 432,
+              "positives_found": 419,
+              "labelled_negatives_reviewed": 13,
+              "positives_missed": 236,
+              "precision": 0.9699074074074074,
+              "recall": 0.6396946564885496
+            },
+            "account_days": {
+              "population": 480,
+              "positive_labels": 480,
+              "average_precision": null,
+              "reviewed": 100,
+              "positives_found": 100,
+              "labelled_negatives_reviewed": 0,
+              "positives_missed": 380,
+              "precision": 1.0,
+              "recall": 0.20833333333333334
+            }
+          }
+        }
+      },
+      "shadow_handoff": [
+        {
+          "case_id": "shadow-d2cc4eae4ac64ff994e0ee4e",
+          "anchor_source_row": 4043830,
+          "ranking_score": 0.9954736445445379,
+          "account_day_transfers": 6,
+          "evidence_transfers": 6,
+          "status": "awaiting_analyst_review",
+          "shacl_conforms": true,
+          "audit_records_after_replay": 1
+        },
+        {
+          "case_id": "shadow-780150b33b50a73186945dc3",
+          "anchor_source_row": 3444542,
+          "ranking_score": 0.9952969126510308,
+          "account_day_transfers": 6,
+          "evidence_transfers": 6,
+          "status": "awaiting_analyst_review",
+          "shacl_conforms": true,
+          "audit_records_after_replay": 1
+        },
+        {
+          "case_id": "shadow-ace1649bfe2a4a3e851bb72c",
+          "anchor_source_row": 3863667,
+          "ranking_score": 0.9951222750217024,
+          "account_day_transfers": 9,
+          "evidence_transfers": 9,
+          "status": "awaiting_analyst_review",
+          "shacl_conforms": true,
+          "audit_records_after_replay": 1
+        }
+      ]
+    }
+  ]
+}

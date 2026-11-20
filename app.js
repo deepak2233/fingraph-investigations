@@ -409,6 +409,9 @@ $("score-model").addEventListener("click", async () => {
       async () => (await snapshot("scores"))[exampleId],
     );
     const result = response.result;
+    const inferenceNote = response.origin === "Published example"
+      ? "Scores and explanations saved by the release. The graph embeddings use history before the test period."
+      : result.inference;
     renderExplanation(result);
     $("model-output").innerHTML =
       `<p class="muted">${esc(demoOrigin(response))}</p>` + Object.entries(result.scores)
@@ -417,7 +420,7 @@ $("score-model").addEventListener("click", async () => {
             `<div class="model-score"><span>${modelNames[name]}</span><strong>${value.toFixed(4)}</strong></div>`,
         )
         .join("") +
-      `<p>Dataset label <b>${result.known_synthetic_label === 1 ? "Synthetic laundering" : "Synthetic legitimate"}</b></p><p class="muted">${esc(result.inference)}</p>`;
+      `<p>Dataset label <b>${result.known_synthetic_label === 1 ? "Synthetic laundering" : "Synthetic legitimate"}</b></p><p class="muted">${esc(inferenceNote)}</p>`;
   } catch (error) {
     $("model-output").textContent = error.message;
     $("prediction-explanation").textContent = "Score the transaction again to retry.";

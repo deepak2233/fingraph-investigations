@@ -662,6 +662,43 @@ footer {
 .hidden {
   display: none !important;
 }
+.workbench-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+  margin-top: 12px;
+  color: #536b78;
+  font-size: 13px;
+}
+.workbench-access a {
+  color: #086e58;
+  text-decoration: underline;
+}
+#workbench-startup {
+  color: #536b78;
+  font-size: 13px;
+  margin: 10px 0;
+}
+#workbench-startup:empty {
+  margin: 0;
+}
+.first-example {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.first-example div {
+  flex: 1 1 350px;
+}
+.first-example p {
+  max-width: 62ch;
+  color: #536b78;
+  margin: 8px 0 0;
+}
 .section-intro {
   max-width: 760px;
   margin: 28px 0;

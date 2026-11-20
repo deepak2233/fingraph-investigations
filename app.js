@@ -8,6 +8,9 @@ const esc = (x) =>
         c
       ],
   );
+const assetVersion = new URL(document.currentScript.src).search;
+const publishedMode = new URLSearchParams(location.search).get("mode") === "published";
+const snapshotFiles = new Map();
 let cases = [],
   selected = null,
   current = null,
@@ -65,7 +68,10 @@ function showView(view) {
   $("page-title").textContent = titles[view][0];
   $("page-subtitle").textContent = titles[view][1];
   $("breadcrumb").textContent = titles[view][2];
+  $("demo-mode-link").href = `${publishedMode ? "/" : "/?mode=published"}#${view}`;
   history.replaceState(null, "", "#" + view);
+  window.scrollTo(0, 0);
+  document.dispatchEvent(new CustomEvent("fingraph:view", { detail: view }));
 }
 document
   .querySelectorAll(".nav")
@@ -79,11 +85,62 @@ async function request(path, options = {}) {
   if (!response.ok) {
     let detail = "";
     try {
-      detail = JSON.stringify((await response.json()).detail);
+      const body = await response.json();
+      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? "");
     } catch {}
-    throw Error(`Request failed (${response.status}). ${detail}`);
+    const error = new Error(`Request failed (${response.status}). ${detail}`.trim());
+    error.status = response.status;
+    throw error;
   }
   return response.json();
+}
+async function boundedRequest(path, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await request(path, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) throw Error("The request timed out.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+async function snapshot(name) {
+  if (!snapshotFiles.has(name)) {
+    snapshotFiles.set(name, boundedRequest(`/demo/${name}.json${assetVersion}`, {}, 12000));
+  }
+  try {
+    return await snapshotFiles.get(name);
+  } catch (error) {
+    snapshotFiles.delete(name);
+    throw error;
+  }
+}
+async function demoAction(path, options, readSnapshot, preferPublished = false) {
+  if (publishedMode) return { result: await readSnapshot(), origin: "Published example" };
+  if (preferPublished) {
+    try {
+      return { result: await readSnapshot(), origin: "Published example" };
+    } catch {
+      // The first graph can also be retrieved from the normal API.
+    }
+  }
+  try {
+    return { result: await boundedRequest(path, options), origin: "Live API" };
+  } catch (error) {
+    if (error.status && error.status < 500 && ![408, 429].includes(error.status)) throw error;
+    try {
+      return { result: await readSnapshot(), origin: "Published example", liveUnavailable: true };
+    } catch {
+      throw Error(`The live API and published example are unavailable. ${error.message}`);
+    }
+  }
+}
+function demoOrigin(response) {
+  return response.liveUnavailable
+    ? "Live API unavailable. Showing a published example. You can retry the action."
+    : response.origin;
 }
 function queue() {
   const q = $("search").value.toLowerCase();
@@ -173,16 +230,24 @@ $("run").addEventListener("click", async () => {
   $("run").disabled = true;
   $("run").textContent = "Investigating…";
   $("status").className = "";
-  $("status").textContent = "Running RDF validation and five specialist steps…";
+  $("status").textContent = publishedMode
+    ? "Loading the published investigation…"
+    : "Running RDF validation and five specialist steps…";
   try {
-    current = await request("/api/investigate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ case_id: selected.id }),
-    });
+    const caseId = selected.id;
+    const response = await demoAction(
+      "/api/investigate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case_id: caseId }),
+      },
+      async () => (await snapshot(caseId)).investigation,
+    );
+    current = { ...response.result, demo_execution: response.origin };
     renderResult();
     renderRuleExplanation();
-    $("status").textContent = "Workflow complete. Analyst review is required.";
+    $("status").textContent = `${demoOrigin(response)} · Analyst review is required.`;
   } catch (e) {
     $("status").className = "error";
     $("status").textContent = e.message;
@@ -258,23 +323,14 @@ function renderPapers() {
       .join("") || '<p class="muted">No papers match this filter.</p>';
 }
 $("paper-search").addEventListener("input", renderPapers);
-(async () => {
-  try {
-    const [c, p] = await Promise.all([
-      request("/api/cases"),
-      request("/research.json"),
-    ]);
-    cases = c;
-    papers = p;
-    choose(cases[0].id);
-    renderPapers();
-  } catch (e) {
-    $("status").className = "error";
-    $("status").textContent = `Unable to load the workbench: ${e.message}`;
-    $("cases").innerHTML =
-      '<p class="padded error">Data unavailable. Reload to retry.</p>';
-  }
-})();
+
+function renderCatalog(catalog) {
+  cases = catalog.cases;
+  papers = catalog.research;
+  choose(cases[0].id);
+  renderPapers();
+  renderModels(catalog);
+}
 
 let evaluationReport = null;
 let inferenceCases = [];
@@ -284,46 +340,40 @@ const modelNames = {
   histogram_gradient_boosting: "Gradient boosting",
 };
 const percent = (value) => (value * 100).toFixed(2) + "%";
-async function loadModels() {
-  try {
-    [evaluationReport, inferenceCases] = await Promise.all([
-      request("/api/model/evaluation"),
-      request("/api/model/examples"),
-    ]);
-    const test = evaluationReport.models.directed_graphsage.test;
-    $("model-summary").innerHTML =
-      `<article><span>Sampled transactions</span><strong>${evaluationReport.dataset.sample_rows.toLocaleString()}<small>5% of HI-Small</small></strong></article><article><span>Held-out transactions</span><strong>${test.rows.toLocaleString()}<small>${test.positives} synthetic positives</small></strong></article><article><span>Model comparison</span><strong>3<small>same time boundaries</small></strong></article>`;
-    const entries = Object.entries(evaluationReport.models);
-    $("metric-table").innerHTML =
-      "<thead><tr><th>Model</th><th>Average precision</th><th>ROC AUC</th><th>Precision at 1%</th><th>Recall at 1%</th></tr></thead><tbody>" +
-      entries
-        .map(
-          ([name, result]) =>
-            `<tr><td>${modelNames[name]}</td><td>${result.test.average_precision.toFixed(4)}</td><td>${result.test.roc_auc.toFixed(4)}</td><td>${percent(result.test.precision_at_1_percent)}</td><td>${percent(result.test.recall_at_1_percent)}</td></tr>`,
-        )
-        .join("") +
-      "</tbody>";
-    const best = entries.reduce((a, b) =>
-      a[1].validation.average_precision > b[1].validation.average_precision
-        ? a
-        : b,
-    );
-    $("model-conclusion").textContent =
-      `${modelNames[best[0]]} leads on validation average precision. The held-out positive prevalence is ${percent(test.prevalence)}. Results cover one synthetic dataset sample and one seed.`;
-    $("model-limitations").innerHTML = evaluationReport.limitations
-      .map((text) => `<li>${esc(text)}</li>`)
-      .join("");
-    $("model-example").innerHTML = inferenceCases
+function renderModels(catalog) {
+  evaluationReport = catalog.evaluation;
+  inferenceCases = catalog.examples;
+  const test = evaluationReport.models.directed_graphsage.test;
+  $("model-summary").innerHTML =
+    `<article><span>Sampled transactions</span><strong>${evaluationReport.dataset.sample_rows.toLocaleString()}<small>5% of HI-Small</small></strong></article><article><span>Held-out transactions</span><strong>${test.rows.toLocaleString()}<small>${test.positives} synthetic positives</small></strong></article><article><span>Model comparison</span><strong>3<small>same time boundaries</small></strong></article>`;
+  const entries = Object.entries(evaluationReport.models);
+  $("metric-table").innerHTML =
+    "<thead><tr><th>Model</th><th>Average precision</th><th>ROC AUC</th><th>Precision at 1%</th><th>Recall at 1%</th></tr></thead><tbody>" +
+    entries
       .map(
-        (item) =>
-          `<option value="${esc(item.id)}">${esc(item.id)} · ${esc(item.currency)} ${esc(item.amount)}</option>`,
+        ([name, result]) =>
+          `<tr><td>${modelNames[name]}</td><td>${result.test.average_precision.toFixed(4)}</td><td>${result.test.roc_auc.toFixed(4)}</td><td>${percent(result.test.precision_at_1_percent)}</td><td>${percent(result.test.recall_at_1_percent)}</td></tr>`,
       )
-      .join("");
-    renderModelInput();
-    if (typeof renderEvaluation === "function") renderEvaluation();
-  } catch (error) {
-    $("model-summary").innerHTML = `<p class="error">${esc(error.message)}</p>`;
-  }
+      .join("") +
+    "</tbody>";
+  const best = entries.reduce((a, b) =>
+    a[1].validation.average_precision > b[1].validation.average_precision
+      ? a
+      : b,
+  );
+  $("model-conclusion").textContent =
+    `${modelNames[best[0]]} leads on validation average precision. The held-out positive prevalence is ${percent(test.prevalence)}. Results cover one synthetic dataset sample and one seed.`;
+  $("model-limitations").innerHTML = evaluationReport.limitations
+    .map((text) => `<li>${esc(text)}</li>`)
+    .join("");
+  $("model-example").innerHTML = inferenceCases
+    .map(
+      (item) =>
+        `<option value="${esc(item.id)}">${esc(item.id)} · ${esc(item.currency)} ${esc(item.amount)}</option>`,
+    )
+    .join("");
+  $("score-model").disabled = !inferenceCases.length;
+  renderModelInput();
 }
 function renderModelInput() {
   const item = inferenceCases.find(
@@ -340,17 +390,28 @@ function renderModelInput() {
 $("model-example").addEventListener("change", renderModelInput);
 $("score-model").addEventListener("click", async () => {
   const button = $("score-model");
+  const example = $("model-example");
+  const exampleId = example.value;
   button.disabled = true;
-  $("model-output").textContent = "Running model inference…";
+  example.disabled = true;
+  $("model-output").textContent = publishedMode
+    ? "Loading the published scores…"
+    : "Running model inference…";
+  $("prediction-explanation").textContent = "Loading prediction explanation…";
   try {
-    const result = await request("/api/model/score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ example_id: $("model-example").value }),
-    });
-    if (typeof renderExplanation === "function") renderExplanation(result);
+    const response = await demoAction(
+      "/api/model/score",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ example_id: exampleId }),
+      },
+      async () => (await snapshot("scores"))[exampleId],
+    );
+    const result = response.result;
+    renderExplanation(result);
     $("model-output").innerHTML =
-      Object.entries(result.scores)
+      `<p class="muted">${esc(demoOrigin(response))}</p>` + Object.entries(result.scores)
         .map(
           ([name, value]) =>
             `<div class="model-score"><span>${modelNames[name]}</span><strong>${value.toFixed(4)}</strong></div>`,
@@ -359,12 +420,32 @@ $("score-model").addEventListener("click", async () => {
       `<p>Dataset label <b>${result.known_synthetic_label === 1 ? "Synthetic laundering" : "Synthetic legitimate"}</b></p><p class="muted">${esc(result.inference)}</p>`;
   } catch (error) {
     $("model-output").textContent = error.message;
+    $("prediction-explanation").textContent = "Score the transaction again to retry.";
   } finally {
     button.disabled = false;
+    example.disabled = false;
   }
 });
 let serviceCase = null;
 let serviceBusy = false;
+async function showServiceAvailability() {
+  if (publishedMode) return;
+  const status = $("service-availability");
+  status.textContent = "Checking the durable review service…";
+  try {
+    const health = await boundedRequest("/api/health");
+    $("service-form").classList.toggle("hidden", !health.private_review_configured);
+    status.textContent = health.private_review_configured
+      ? "The private review API is configured. An authorised OIDC token is required."
+      : "Durable review requires a separate backend. You can try analyst review in Investigations.";
+  } catch {
+    $("service-form").classList.add("hidden");
+    status.textContent = "Could not verify the durable service. Reopen Pipeline to retry.";
+  }
+}
+document.addEventListener("fingraph:view", (event) => {
+  if (event.detail === "pipeline") showServiceAvailability();
+});
 function serviceHeaders() {
   return {
     "Content-Type": "application/json",
@@ -459,8 +540,6 @@ $("review-service").addEventListener("click", () =>
 $("evidence-service").addEventListener("click", () =>
   submitServiceReview("request_evidence"),
 );
-loadModels();
-
 function renderRuleExplanation() {
   const host = $("rule-explainer");
   host.classList.remove("hidden");
@@ -482,4 +561,8 @@ function renderRuleExplanation() {
   inspect(current.signals[0]);
 }
 const initialView = location.hash.slice(1);
-showView(titles[initialView] ? initialView : "overview");
+$("demo-mode-link").textContent = publishedMode ? "Use live API" : "Use published examples";
+if (publishedMode) {
+  $("workbench-mode").textContent = "Published examples mode. Results were generated by the release pipeline.";
+}
+showView(Object.hasOwn(titles, initialView) ? initialView : "overview");

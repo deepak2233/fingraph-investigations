@@ -26,6 +26,8 @@ These are software and experimental objectives. Reduced analyst time, fewer miss
 
 The app contains working inspection controls, not screenshots of an intended system.
 
+Open the [public production URL](https://fingraph-investigations.vercel.app/) to start. The landing page and published catalog are static, so the workbench can display the fixtures, ontology and benchmark without waiting for the Python function. Investigation, graph validation and scoring buttons call the live API by default. If an eligible request times out or the API is unavailable, the corresponding response from the release is shown with a **Published example** label. The [published examples mode](https://fingraph-investigations.vercel.app/?mode=published#data) loads those reference results directly. The private review API always requires its configured service and identity provider.
+
 | View | Exercise | What to inspect |
 |---|---|---|
 | Goal & scope | Read the problem, acceptance criteria and priorities | What is running, what is planned, and what remains unverified |
@@ -341,9 +343,9 @@ node --check app.js
 node --check lab.js
 ```
 
-CI runs lint, formatting, regression tests and JavaScript syntax checks. A separate job runs actual Kafka/PostgreSQL containers, verifies ingestion/projection/review, restarts the worker and repeats publication to check replay. The suite covers rollback, duplicate identity conflicts, concurrent review conflicts, tenant isolation, JWT checks, quarantine, projection retries, RDF validation, explanations and model export parity.
+CI runs lint, formatting, regression tests and JavaScript syntax checks. It also checks that the published demo files match the current fixtures, ontology, model artifacts and server outputs. Run `python -m scripts.export_workbench` after changing those inputs. A separate job runs actual Kafka/PostgreSQL containers, verifies ingestion/projection/review, restarts the worker and repeats publication to check replay. The suite covers rollback, duplicate identity conflicts, concurrent review conflicts, tenant isolation, JWT checks, quarantine, projection retries, RDF validation, explanations and model export parity.
 
-Vercel hosts the public workbench. The manual deployment workflow validates code before deployment and requires `VERCEL_TOKEN` as a GitHub secret plus `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` variables. These credentials are not committed. See [verification](docs/VERIFICATION.md) for the latest observed CI and deployment state.
+Vercel hosts the public workbench. The manual deployment workflow validates code before deployment and requires `VERCEL_TOKEN` as a GitHub secret plus `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` variables. The final smoke check uses the public production origin, configurable with `PUBLIC_DEMO_URL`, and verifies the page, demo assets, graph validation, investigation and inference without credentials. See [verification](docs/VERIFICATION.md) for the observed CI and deployment state.
 
 ## 12. What the architecture achieves and the next work
 

@@ -8,9 +8,9 @@
       content="FinGraph financial crime investigation research workbench. Explore evidence-backed graph signals and an ontology-driven architecture using synthetic examples."
     />
     <title>FinGraph | Investigation Workbench</title>
-    <link rel="stylesheet" href="/style.css" />
-    <script src="/app.js" defer></script>
-    <script src="/lab.js" defer></script>
+    <link rel="stylesheet" href="/style.css?v=0.3.1" />
+    <script src="/app.js?v=0.3.1" defer></script>
+    <script src="/lab.js?v=0.3.1" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -19,13 +19,13 @@
       >
       <div class="workspace">RESEARCH WORKSPACE</div>
       <nav aria-label="Main navigation">
-        <button class="nav" data-view="overview">
+        <button class="nav active" data-view="overview">
           ◎ <span>Goal & scope</span>
         </button>
         <button class="nav" data-view="data">
           ▧ <span>Data & RDF explorer</span>
         </button>
-        <button class="nav active" data-view="investigation">
+        <button class="nav" data-view="investigation">
           ◈ <span>Investigations</span><small>05</small></button
         ><button class="nav" data-view="models">◉ <span>Model lab</span></button
         ><button class="nav" data-view="pipeline">
@@ -40,14 +40,14 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="avatar">DY</div>
-        <div>Deepak Yadav<small>Research project · v0.3</small></div>
+        <div>Deepak Yadav<small>Research project · v0.3.1</small></div>
       </div>
     </aside>
     <div class="shell">
       <header>
         <div>
           <span class="breadcrumb">Workspace</span><span class="slash">/</span
-          ><span id="breadcrumb">Investigations</span>
+          ><span id="breadcrumb">Goal & scope</span>
         </div>
         <div class="header-right">
           <span class="dot"></span>Synthetic research prototype<span
@@ -60,10 +60,9 @@
         <div class="page-heading">
           <div>
             <div class="eyebrow">FINANCIAL CRIME INTELLIGENCE</div>
-            <h1 id="page-title">Follow the evidence.</h1>
+            <h1 id="page-title">Understand the investigation.</h1>
             <p id="page-subtitle">
-              Connected transactions. Source-backed context. Analyst-led
-              decisions.
+              Goals, measured outcomes, boundaries and a guided exercise.
             </p>
           </div>
           <div class="outline-tag">RDF / OWL · SHACL · LangGraph</div>
@@ -74,16 +73,33 @@
             Explore five investigation scenarios and three trained models. Model
             lab uses a held-out sample from IBM AMLworld. All data is synthetic.
           </p>
-          <a href="#" id="scope-link">View system scope ↗</a>
+          <a href="#overview" id="scope-link">View system scope ↗</a>
         </div>
-        <section id="overview" class="view hidden">
+        <div class="workbench-access">
+          <a id="demo-mode-link" href="/?mode=published#overview">Use published examples</a>
+          <a href="/docs/FinGraph_Research_and_Architecture.html">Read the architecture report ↗</a>
+          <span id="workbench-mode"></span>
+        </div>
+        <p id="workbench-startup" role="status" aria-live="polite"></p>
+        <button class="secondary hidden" id="retry-workbench">Retry loading the workbench</button>
+        <noscript>
+          <p>Enable JavaScript to use the interactive exercises. The architecture report above is available without JavaScript.</p>
+        </noscript>
+        <section id="overview" class="view">
           <div class="section-intro">
             <h2>What this system is meant to achieve.</h2>
             <p>
-              An inspectable engineering exercise: source data, semantics,
-              investigation, measurement and limitations.
+              Follow a synthetic transfer from the ledger to its RDF relationships,
+              evidence and analyst review. Compare three trained models at the same review budget.
             </p>
           </div>
+          <article class="panel padded first-example">
+            <div>
+              <h3>Start with Rapid fan-out</h3>
+              <p>Follow four transfers from account A001 to four counterparties. Inspect the source records and the registry evidence behind the ownership claim.</p>
+            </div>
+            <button class="primary" data-jump="data">Open the data explorer ↗</button>
+          </article>
           <div class="guide-grid" data-guide="overview"></div>
           <div class="panel padded walkthrough">
             <h3>Work through the exercise</h3>
@@ -159,7 +175,7 @@
                 </option>
                 <option value="shared_owners">Shared asserted owners</option>
               </select></label
-            ><button class="primary" id="load-graph">
+            ><button class="primary" id="load-graph" disabled>
               Build and validate graph
             </button>
           </div>
@@ -200,7 +216,7 @@
             </section>
           </div>
           <div class="panel padded space-top">
-            <h3>Live SHACL result</h3>
+            <h3>SHACL result</h3>
             <div id="validation-result"></div>
           </div>
           <div class="panel padded space-top">
@@ -408,7 +424,7 @@
               <label for="model-example">Held-out transaction</label
               ><select id="model-example"></select>
               <div id="model-input" class="model-input"></div>
-              <button class="primary" id="score-model">
+              <button class="primary" id="score-model" disabled>
                 Score transaction
               </button>
               <div id="model-output" role="status" aria-live="polite"></div>
@@ -492,35 +508,39 @@
               Run the repository's Docker Compose stack to exercise ingestion
               and persistence.
             </p>
-            <label for="service-token">OIDC bearer token</label
-            ><input
-              id="service-token"
-              type="password"
-              autocomplete="off"
-              placeholder="Session-only token with ingest, analyst and reviewer roles"
-            /><label for="service-tenant">Tenant ID from the token</label
-            ><input id="service-tenant" value="demo" maxlength="96" />
-            <div class="review-actions">
-              <button class="primary" id="ingest-service">
-                Ingest selected scenario</button
-              ><button class="secondary" id="reload-service" disabled>
-                Reload saved case
-              </button>
+            <p id="service-availability" role="status">Durable review requires a configured PostgreSQL and OIDC backend.</p>
+            <p><a href="https://github.com/deepak2233/fingraph-investigations#9-run-locally">Run the backend locally ↗</a></p>
+            <div id="service-form" class="hidden">
+              <label for="service-token">OIDC bearer token</label
+              ><input
+                id="service-token"
+                type="password"
+                autocomplete="off"
+                placeholder="Session-only token with ingest, analyst and reviewer roles"
+              /><label for="service-tenant">Tenant ID from the token</label
+              ><input id="service-tenant" value="demo" maxlength="96" />
+              <div class="review-actions">
+                <button class="primary" id="ingest-service">
+                  Ingest selected scenario</button
+                ><button class="secondary" id="reload-service" disabled>
+                  Reload saved case
+                </button>
+              </div>
+              <div id="service-status" role="status"></div>
+              <label for="service-reason">Review rationale</label
+              ><textarea
+                id="service-reason"
+                placeholder="Record the evidence you reviewed"
+              ></textarea>
+              <div class="review-actions">
+                <button class="primary" id="review-service" disabled>
+                  Record review</button
+                ><button class="secondary" id="evidence-service" disabled>
+                  Request evidence
+                </button>
+              </div>
+              <pre id="service-output"></pre>
             </div>
-            <div id="service-status" role="status"></div>
-            <label for="service-reason">Review rationale</label
-            ><textarea
-              id="service-reason"
-              placeholder="Record the evidence you reviewed"
-            ></textarea>
-            <div class="review-actions">
-              <button class="primary" id="review-service" disabled>
-                Record review</button
-              ><button class="secondary" id="evidence-service" disabled>
-                Request evidence
-              </button>
-            </div>
-            <pre id="service-output"></pre>
           </div>
         </section>
         <section id="architecture" class="view hidden">

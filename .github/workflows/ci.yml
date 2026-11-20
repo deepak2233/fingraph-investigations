@@ -23,9 +23,10 @@ jobs:
         with:
           node-version: '22'
       - run: pip install -r requirements-dev.txt
-      - run: ruff check api pipeline ml tests scripts/verify_stack.py
-      - run: ruff format --check api pipeline ml tests scripts/verify_stack.py
+      - run: ruff check api pipeline ml tests scripts/verify_stack.py scripts/export_workbench.py scripts/smoke_public.py
+      - run: ruff format --check api pipeline ml tests scripts/verify_stack.py scripts/export_workbench.py scripts/smoke_public.py
       - run: python -m pytest -q --disable-warnings
+      - run: python -m scripts.export_workbench --check
       - run: node --check app.js && node --check lab.js
       - run: python -m compileall -q api pipeline ml
   kafka-postgres:

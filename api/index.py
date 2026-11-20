@@ -22,6 +22,8 @@ from pipeline.service import InvestigationService
 from pipeline.store import Conflict, NotFound, Store
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = "0.3.1"
+DEMO_ASSETS = {"demo/catalog.json", "demo/scores.json", *(f"demo/{case['id']}.json" for case in CASES)}
 logger = logging.getLogger("fingraph.api")
 
 
@@ -43,7 +45,7 @@ async def lifespan(_):
 
 app = FastAPI(
     title="FinGraph Investigations",
-    version="0.3.0",
+    version=VERSION,
     lifespan=lifespan,
     description="Synthetic research workbench with a separate authenticated, durable service API.",
 )
@@ -106,10 +108,13 @@ class ModelRequest(BaseModel):
 def health():
     return {
         "status": "ok",
-        "version": "0.3.0",
+        "version": VERSION,
         "mode": "synthetic_research_workbench",
         "models_trained": (ROOT / "artifacts/gnn_model.json").exists(),
         "durable_service_configured": bool(os.getenv("DATABASE_URL")),
+        "private_review_configured": all(
+            os.getenv(key) for key in ("DATABASE_URL", "OIDC_ISSUER", "OIDC_AUDIENCE", "OIDC_JWKS_URL")
+        ),
         "integrations": {
             "neptune": "worker configuration",
             "kafka": "worker configuration",
@@ -142,9 +147,7 @@ def run(body: InvestigationRequest):
     case = next((case for case in CASES if case["id"] == body.case_id), None)
     if not case:
         raise HTTPException(404, "Unknown case")
-    result = investigate(case)
-    result.pop("workflow_state", None)
-    return result
+    return public_result(investigate(case))
 
 
 @app.get("/api/model/examples")
@@ -225,6 +228,7 @@ def static_asset(asset: str):
         "lab.js",
         "architecture.svg",
         "docs/FinGraph_Research_and_Architecture.html",
+        *DEMO_ASSETS,
     }
     if asset not in allowed:
         raise HTTPException(404, "Unknown asset")

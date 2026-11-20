@@ -1,5 +1,5 @@
 "use strict";
-// The explorer reads actual API projections; charts read the checked-in evaluation artifact.
+// Both the live and published views use projections produced by the Python implementation.
 let explored = null;
 let graphLoading = false;
 const colors = {
@@ -50,21 +50,30 @@ function plot(
 function bars(rows, label, scale = 1) {
   return `<div class="bar-chart" aria-label="${esc(label)}">${rows.map((row) => `<div class="bar-row"><span>${esc(row.name)}</span><div class="bar-track"><i style="width:${Math.min(100, (Math.abs(row.value) / scale) * 100)}%;background:${row.color || "#087f68"}"></i></div><strong>${esc(row.display ?? row.value.toFixed(4))}</strong></div>`).join("")}</div>`;
 }
-async function loadExplorer() {
-  if (graphLoading || !$("data-case").value) return;
+async function loadExplorer(preferPublished = false) {
+  const source = cases.find((item) => item.id === $("data-case").value);
+  if (graphLoading || !source) return;
+  const variant = $("graph-variant").value;
+  const query = $("graph-query").value;
+  const controls = ["data-case", "graph-variant", "graph-query", "load-graph"];
   graphLoading = true;
-  $("load-graph").disabled = true;
-  $("data-status").textContent = "Building RDF and running SHACL…";
+  controls.forEach((id) => ($(id).disabled = true));
+  $("data-status").textContent = preferPublished || publishedMode
+    ? "Loading the published graph…"
+    : "Building RDF and running SHACL…";
   try {
-    const params = new URLSearchParams({
-      variant: $("graph-variant").value,
-      query: $("graph-query").value,
-    });
-    explored = await request(
-      `/api/explorer/${encodeURIComponent($("data-case").value)}?${params}`,
+    const params = new URLSearchParams({ variant, query });
+    const response = await demoAction(
+      `/api/explorer/${encodeURIComponent(source.id)}?${params}`,
+      {},
+      async () => {
+        const { graph, queries } = (await snapshot(source.id)).variants[variant];
+        return { ...graph, source, query: queries[query] };
+      },
+      preferPublished,
     );
-    const source = explored.source;
-    $("data-status").textContent = explored.mutation;
+    explored = response.result;
+    $("data-status").textContent = `${demoOrigin(response)} · ${explored.mutation}`;
     $("data-stats").innerHTML =
       `<article><span>Source transactions</span><strong>${source.transactions.length}</strong></article><article><span>Asserted instance triples</span><strong>${explored.instance_triple_count}</strong></article><article><span>SHACL validation</span><strong class="text-value">${explored.validation.conforms ? "Conforms" : "Blocked"}</strong></article>`;
     $("data-origin").textContent =
@@ -134,10 +143,10 @@ async function loadExplorer() {
         )
       : "<p>No matching rows. An empty result is not proof that an owner or relationship does not exist outside this graph.</p>";
   } catch (e) {
-    $("data-status").textContent = e.message;
+    $("data-status").textContent = `${e.message} Select Build and validate graph to retry.`;
   } finally {
     graphLoading = false;
-    $("load-graph").disabled = false;
+    controls.forEach((id) => ($(id).disabled = false));
   }
 }
 function renderTriples() {
@@ -370,13 +379,15 @@ function renderExplanation(result) {
       ]),
     )}</div><h4>GraphSAGE explanation boundary</h4><p>${esc(explanation.graphsage.method)}</p>`;
 }
-async function loadLab() {
+async function startWorkbench() {
+  const startup = $("workbench-startup");
+  const retry = $("retry-workbench");
+  retry.classList.add("hidden");
+  startup.textContent = "Loading the interactive examples…";
   try {
-    const [guide, schema, data] = await Promise.all([
-      request("/guide.json"),
-      request("/api/ontology"),
-      request("/api/cases"),
-    ]);
+    const catalog = await snapshot("catalog");
+    const { guide, ontology: schema } = catalog;
+    renderCatalog(catalog);
     document.querySelectorAll("[data-guide]").forEach((el) => {
       el.innerHTML = guide[el.dataset.guide]
         .map(
@@ -392,27 +403,37 @@ async function loadLab() {
       )}</div>`;
     $("ontology-turtle").textContent = schema.ontology_turtle;
     $("shapes-turtle").textContent = schema.shapes_turtle;
-    $("data-case").innerHTML = data
+    $("data-case").innerHTML = cases
       .map(
         (c) =>
           `<option value="${esc(c.id)}">${esc(c.id)} · ${esc(c.title)}</option>`,
       )
       .join("");
-    await loadExplorer();
+    $("load-graph").disabled = false;
     renderEvaluation();
+    startup.textContent = "";
+    if (!$("data").classList.contains("hidden")) await loadExplorer(true);
   } catch (e) {
-    $("data-status").textContent = e.message;
+    startup.textContent = `Could not load the interactive examples. ${e.message} Retry or open the architecture report.`;
+    retry.classList.remove("hidden");
   }
 }
-$("load-graph").addEventListener("click", loadExplorer);
+$("retry-workbench").addEventListener("click", startWorkbench);
+$("load-graph").addEventListener("click", () => loadExplorer());
+$("data-case").addEventListener("change", () => loadExplorer(true));
+for (const id of ["graph-variant", "graph-query"]) {
+  $(id).addEventListener("change", () => {
+    $("data-status").textContent = "Settings updated. Build the graph to view the selected exercise.";
+  });
+}
+document.addEventListener("fingraph:view", (event) => {
+  if (event.detail === "data" && !explored) loadExplorer(true);
+});
 $("rdf-focus").addEventListener("change", renderRdfFocus);
 $("triple-filter").addEventListener("input", renderTriples);
 $("review-budget").addEventListener("input", renderBudget);
 $("diagnostic-model").addEventListener("change", renderConfusion);
 document.querySelectorAll("[data-jump]").forEach((b) =>
-  b.addEventListener("click", () => {
-    showView(b.dataset.jump);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }),
+  b.addEventListener("click", () => showView(b.dataset.jump)),
 );
-loadLab();
+startWorkbench();

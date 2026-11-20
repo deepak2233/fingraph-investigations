@@ -1,6 +1,14 @@
 # Verification record
 
-Version 0.3, updated 20 November 2026.
+Version 0.3.1, updated 20 November 2026.
+
+## Public access and startup
+
+An unauthenticated HTTP client reached the production origin and public endpoints. Browser inspection found an avoidable startup dependency: the overview was hidden until JavaScript ran, and separate sections waited for batches of API calls before rendering. A slow or failed function could leave a section empty with the error shown elsewhere.
+
+The release renders a landing page and an architecture report link before JavaScript runs. It loads a static catalog and the first graph before any Python calls. Explicit investigation, validation and scoring still use the live API. Published results have a visible origin and provide a fallback on transport failures, timeouts, rate limits and server errors. Authentication failures remain errors. The private review form appears only when database and OIDC settings are present.
+
+`python -m scripts.export_workbench --check` checks the published catalog and results against their source implementations. `python -m scripts.smoke_public https://fingraph-investigations.vercel.app` checks the public origin without credentials and runs the graph, workflow and model calls end to end. The deployment workflow uses the public alias for this probe because generated Vercel deployment URLs can be protected.
 
 ## Completed checks
 

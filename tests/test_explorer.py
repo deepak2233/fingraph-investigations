@@ -32,7 +32,11 @@ def test_graph_projection_provenance_and_validation_isolation(case):
         invalid = client.get(f"/api/explorer/{case}", params={"variant": variant}).json()
         assert not invalid["validation"]["conforms"]
         assert not invalid["query"]["allowed_for_investigation"]
-        assert any(i["path"].endswith(expected) for i in invalid["validation"]["issues"])
+        issues = invalid["validation"]["issues"]
+        assert len(issues) == 1
+        assert issues[0]["path"].endswith(expected)
+        if variant == "negative_amount":
+            assert issues[0]["message"].startswith("Value is not >")
         assert invalid["source"] == valid["source"]
     assert CASES == original
     assert client.get(f"/api/explorer/{case}").json()["validation"]["conforms"]

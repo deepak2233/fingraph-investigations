@@ -22,7 +22,7 @@ from pipeline.service import InvalidEvidence, InvestigationService
 from pipeline.store import Conflict, NotFound, Store
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 DEMO_ASSETS = {"demo/catalog.json", "demo/scores.json", *(f"demo/{case['id']}.json" for case in CASES)}
 logger = logging.getLogger("fingraph.api")
 

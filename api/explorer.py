@@ -76,7 +76,7 @@ def explore(case_id: str, variant: Variant = "valid", query: Query = "transactio
     transaction = EX[case["transactions"][0]["id"]]
     mutation = "Original fixture graph. No mutation."
     if variant == "negative_amount":
-        graph.set((transaction, FG.amount, Literal(-1, datatype=XSD.decimal)))
+        graph.set((transaction, FG.amount, Literal("-1", datatype=XSD.decimal)))
         mutation = f"Set {compact(transaction)} fg:amount to -1. Source JSON is unchanged."
     elif variant == "missing_sender":
         graph.remove((transaction, FG.sender, None))

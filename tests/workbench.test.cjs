@@ -6,8 +6,9 @@ const { runInNewContext } = require("node:vm");
 
 const script = readFileSync(path.join(__dirname, "../app.js"), "utf8");
 
-function workbench(hash) {
-  const location = new URL(`https://fingraph.example/?mode=published&case=FG-004${hash}`);
+function workbench(hash, { published = true, fetch } = {}) {
+  const location = new URL(`https://fingraph.example/?case=FG-004${hash}`);
+  if (published) location.searchParams.set("mode", "published");
   const entries = [];
   const views = ["overview", "data", "models", "investigation"].map((id) => ({
     id,
@@ -39,12 +40,18 @@ function workbench(hash) {
   };
   const rendered = [];
   document.addEventListener("fingraph:view", (event) => rendered.push(event.detail));
-  runInNewContext(script, { document, location, history, window, URL, URLSearchParams, CustomEvent });
+  const context = {
+    document, location, history, window, URL, URLSearchParams, CustomEvent,
+    fetch, AbortController, setTimeout, clearTimeout,
+  };
+  runInNewContext(script, context);
   return {
     entries,
     rendered,
     location,
     modeLink: elements.get("demo-mode-link"),
+    demoAction: context.demoAction,
+    demoOrigin: context.demoOrigin,
     visible: () => views.filter((view) => !view.classList.hidden).map((view) => view.id),
     active: () => buttons.find((button) => button["aria-current"] === "page")?.dataset.view,
     click(view) {
@@ -82,4 +89,35 @@ test("evidence citations preserve the investigation and its anchor", () => {
   assert.deepEqual(app.entries, []);
   app.navigate("#unknown");
   assert.deepEqual(app.visible(), ["overview"]);
+});
+
+test("a missing live RDF route falls back to the matching published exercise", async () => {
+  const route = "/api/explorer/FG-004?variant=missing_evidence&query=ownership";
+  const fixture = { case_id: "FG-004", variant: "missing_evidence" };
+  const app = workbench("#data", {
+    published: false,
+    async fetch(url) {
+      assert.equal(url, route);
+      return Response.json({ detail: "Unknown asset" }, { status: 404 });
+    },
+  });
+  const response = await app.demoAction(route, {}, async () => fixture);
+  assert.equal(response.result, fixture);
+  assert.equal(response.origin, "Published example");
+  assert.match(app.demoOrigin(response), /Live API unavailable \(HTTP 404\)\. Showing a published example/);
+});
+
+test("an invalid live query still reports the validation error", async () => {
+  const app = workbench("#data", {
+    published: false,
+    async fetch() {
+      return Response.json({ detail: "Invalid query" }, { status: 422 });
+    },
+  });
+  await assert.rejects(
+    app.demoAction("/api/explorer/FG-004?query=invalid", {}, async () => {
+      assert.fail("A rejected query should not use a saved result.");
+    }),
+    { message: "Request failed (422). Invalid query" },
+  );
 });

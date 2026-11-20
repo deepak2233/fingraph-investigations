@@ -1,6 +1,6 @@
 [project]
 name = "fingraph-investigations"
-version = "0.4.2"
+version = "0.4.3"
 description = "Evidence-based financial crime investigation research platform"
 requires-python = ">=3.12"
 dependencies = [

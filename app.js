@@ -153,18 +153,23 @@ async function demoAction(path, options, readSnapshot, preferPublished = false) 
   try {
     return { result: await boundedRequest(path, options), origin: "Live API" };
   } catch (error) {
-    if (error.status && error.status < 500 && ![408, 429].includes(error.status)) throw error;
+    if (error.status && error.status < 500 && ![404, 408, 429].includes(error.status)) throw error;
     try {
-      return { result: await readSnapshot(), origin: "Published example", liveUnavailable: true };
+      return {
+        result: await readSnapshot(),
+        origin: "Published example",
+        liveUnavailable: true,
+        liveStatus: error.status,
+      };
     } catch {
       throw Error(`The live API and published example are unavailable. ${error.message}`);
     }
   }
 }
 function demoOrigin(response) {
-  return response.liveUnavailable
-    ? "Live API unavailable. Showing a published example. You can retry the action."
-    : response.origin;
+  if (!response.liveUnavailable) return response.origin;
+  const status = response.liveStatus ? ` (HTTP ${response.liveStatus})` : "";
+  return `Live API unavailable${status}. Showing a published example. You can retry the action.`;
 }
 function queue() {
   const q = $("search").value.toLowerCase();

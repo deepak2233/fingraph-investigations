@@ -31,19 +31,33 @@ def verify(base):
     home = fetch("/", "text/html")
     require(b"Start with Rapid fan-out" in home, "The public landing page is missing its start section")
     fetch("/docs/FinGraph_Research_and_Architecture.html", "text/html")
-    catalog = fetch("/demo/catalog.json", "application/json")
-    require(len(catalog["cases"]) == 5 and catalog["guide"]["overview"], "Demo catalog is incomplete")
-    case_id = catalog["cases"][0]["id"]
-    sample = fetch(f"/demo/{case_id}.json", "application/json")
-    require(
-        sample["variants"]["valid"]["graph"]["validation"]["conforms"], "Published graph failed SHACL"
-    )
-    require(
-        not sample["variants"]["missing_evidence"]["graph"]["validation"]["conforms"],
-        "Published validation exercise did not fail as expected",
-    )
     health = fetch("/api/health", "application/json")
     require(health["status"] == "ok" and health["models_trained"], "The live API is not ready")
+    version = health["version"]
+    require(
+        all(f'/{script}.js?v={version}"'.encode() in home for script in ("app", "lab")),
+        "The workbench scripts and live API have different release versions",
+    )
+    catalog = fetch(f"/demo/catalog.json?v={version}", "application/json")
+    require(len(catalog["cases"]) == 5 and catalog["guide"]["overview"], "Demo catalog is incomplete")
+    for case in catalog["cases"]:
+        case_id = case["id"]
+        published = fetch(f"/demo/{case_id}.json?v={version}", "application/json")["variants"]
+        require(
+            published["valid"]["graph"]["validation"]["conforms"], f"{case_id} saved graph failed SHACL"
+        )
+        require(
+            not published["missing_evidence"]["graph"]["validation"]["conforms"],
+            f"{case_id} saved validation exercise did not fail as expected",
+        )
+        live = fetch(f"/api/explorer/{case_id}?variant=valid&query=transactions", "application/json")
+        require(
+            live["case_id"] == case_id
+            and live["validation"]["conforms"]
+            and live["query"] == published["valid"]["queries"]["transactions"],
+            f"{case_id} live graph did not match its saved transaction results",
+        )
+    case_id = catalog["cases"][0]["id"]
     graph = fetch(
         f"/api/explorer/{case_id}?variant=missing_evidence&query=ownership", "application/json"
     )
@@ -53,7 +67,7 @@ def verify(base):
         result["status"] == "awaiting_analyst_review" and len(result["trace"]) == 5, "Workflow failed"
     )
     example = catalog["examples"][0]["id"]
-    reference = fetch("/demo/scores.json", "application/json")[example]
+    reference = fetch(f"/demo/scores.json?v={version}", "application/json")[example]
     scores = fetch("/api/model/score", "application/json", {"example_id": example})
     require(
         scores["scores"] == reference["scores"] and len(scores["scores"]) == 3, "Unexpected model scores"

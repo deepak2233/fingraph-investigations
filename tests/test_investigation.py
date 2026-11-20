@@ -48,6 +48,28 @@ def test_missing_ownership_is_gap_not_innocence():
     assert any("Missing" in s for s in r["draft"]["gaps"])
 
 
+def test_shared_holders_preserve_each_registry_source_and_count_distinct_accounts():
+    case = deepcopy(CASES[0])
+    first, second, third, *_ = case["accounts"]
+    second["holder"] = first["holder"]
+    inactive = case["accounts"][-1]
+    inactive.update(holder=third["holder"], owner=third["owner"])
+
+    result = investigate(case)
+    assert result["status"] == "awaiting_analyst_review"
+    assert result["ownership"]["shared"] == [{"owner": first["owner"], "accounts": ["A001", "A002"]}]
+    registry = [entry for entry in result["evidence"] if entry["kind"] == "ownership"]
+    assert len(registry) == len(case["accounts"])
+    assert len({entry["id"] for entry in registry}) == len(registry)
+    sources = {f"registry-{account['id']}": account["ownership_source"] for account in case["accounts"]}
+    assert {entry["id"]: entry["source"] for entry in registry} == sources
+    joined_sources = {
+        (row["account"], row["evidence"]): row["source"] for row in result["ownership"]["assertions"]
+    }
+    assert joined_sources[("A001", "registry-A002")] == second["ownership_source"]
+    assert joined_sources[("A002", "registry-A001")] == first["ownership_source"]
+
+
 def test_stale_screening_never_cleared():
     r = investigate(CASES[4])
     assert r["screening"]["status"] == "stale"

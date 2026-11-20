@@ -335,7 +335,7 @@
 </tr>
 </tbody>
 </table>
-<p>The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Integrating a continuously refreshed bank feature store and trained score into the investigation policy is a subsequent institutional deployment decision.</p>
+<p>The semantic investigation and ML benchmark are two executable paths with different inputs. The five authored investigation cases exercise evidence handling. IBM AMLworld supplies model training and evaluation. Candidate selection and case prioritisation use fixed rules. An institutional detection release requires point-in-time features, recorded eligibility and ranking decisions, and case-level evaluation against the existing alert queue.</p>
 <h2 id="3-source-contracts-and-candidate-generation">3. Source contracts and candidate generation</h2>
 <p>A ledger connector supplies resolved account identifiers, account holders, transaction amounts, currency, timestamps with timezones, and source record IDs. Direct ownership assertions additionally require their percentage, source reference, and observation time. Decimal monetary values retain their precision during ingestion and RDF construction.</p>
 <p><code>InvestigationCase</code> rejects duplicate account or transaction identifiers, missing referenced accounts, future-dated transactions relative to the cutoff, missing source IDs, invalid monetary values, and ownership observations from after the cutoff. The current bounded contract accepts up to 500 accounts and 1,000 transactions. HTTP bodies are limited to 2 MB by counting streamed bytes.</p>
@@ -673,7 +673,7 @@
 <p>Review objectives should include missing-evidence recall, false-positive workload, model drift by customer cohort and payment type, stale ownership and screening data, rejected-schema rate, Kafka lag, outbox delay, review conflicts, and audit completeness. Benchmark accuracy alone cannot establish operational suitability.</p>
 <p>The most material extensions are full-history graph features, independent temporal evaluation, a live screening adapter with source-freshness controls, institution-approved ownership logic, persistent document evidence, and measured analyst evaluation. Those extensions should have explicit acceptance tests and a deployment-specific threat model.</p>
 <h2 id="16-research-register">16. Research register</h2>
-<p>The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.</p>
+<p>The register covers 26 selected papers. Methods and experiment sections were inspected for AMLworld, Elliptic2, the Graph Feature Preprocessor, SynthAML, LaundroGraph, and collaborative AML. Other entries identify the abstract or primary-source description used. This is a targeted literature review with a separate FinGraph experiment. Published results are attributed to their own settings.</p>
 <h3 id="p01-elliptic-anti-money-laundering-in-bitcoin-2019">P01 · Elliptic: Anti-Money Laundering in Bitcoin (2019)</h3>
 <p>Compares tabular and graph classifiers on a Bitcoin transaction graph; Random Forest was strongest in the reported comparison. Benchmark simple supervised models before introducing GNN complexity.</p>
 <p>The main limitation is that crypto transaction labels do not validate bank-account or beneficial-owner decisions.</p>
@@ -739,9 +739,9 @@
 <p>The main limitation is that finGraph implements a simpler directed GraphSAGE comparator without port numbering.</p>
 <p>Reviewed at the level of abstract and primary-source description. <a href="https://arxiv.org/abs/2306.11586">Primary source</a></p>
 <h3 id="p17-graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection-2024">P17 · Graph Feature Preprocessor: Real-time Subgraph-based Feature Extraction for Financial Crime Detection (2024)</h3>
-<p>Extracts transaction graph patterns for downstream tree models. Compare graph-derived tabular features with neural message passing.</p>
-<p>The main limitation is that published throughput belongs to that implementation and benchmark.</p>
-<p>Reviewed at the level of primary-source abstract. <a href="https://research.ibm.com/publications/graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection">Primary source</a></p>
+<p>Extracts temporal graph motifs and account statistics for tree models. The authors compare basic and enriched features on chronological holdouts. Test graph features with boosting first and match feature visibility to the decision time.</p>
+<p>The main limitation is that batch size changes how much context is visible. Published F1 and throughput apply to that benchmark and deployment setting.</p>
+<p>Reviewed at the level of methods, experimental setup and results. <a href="https://research.ibm.com/publications/graph-feature-preprocessor-real-time-subgraph-based-feature-extraction-for-financial-crime-detection">Primary source</a></p>
 <h3 id="p18-flowscope-spotting-money-laundering-based-on-graphs-2020">P18 · FlowScope: Spotting Money Laundering Based on Graphs (2020)</h3>
 <p>Uses flow structure across multipartite graphs to detect suspicious chains. Measure amounts and temporal ordering in addition to graph connectivity.</p>
 <p>The main limitation is that a detected pattern still needs economic context and source verification.</p>

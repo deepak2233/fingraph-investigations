@@ -125,6 +125,18 @@ def choose_threshold(labels, scores):
     return float(thresholds[np.argmax(f1)])
 
 
+def gradient_boosting_baseline():
+    return HistGradientBoostingClassifier(
+        max_iter=100,
+        max_leaf_nodes=15,
+        learning_rate=0.08,
+        l2_regularization=1,
+        class_weight="balanced",
+        random_state=42,
+        early_stopping=False,
+    )
+
+
 def train(data_dir, output, epochs=20):
     started = time.monotonic()
     torch.manual_seed(42)
@@ -230,18 +242,7 @@ def train(data_dir, output, epochs=20):
             "logistic_regression",
             LogisticRegression(max_iter=300, class_weight="balanced", random_state=42),
         ),
-        (
-            "histogram_gradient_boosting",
-            HistGradientBoostingClassifier(
-                max_iter=100,
-                max_leaf_nodes=15,
-                learning_rate=0.08,
-                l2_regularization=1,
-                class_weight="balanced",
-                random_state=42,
-                early_stopping=False,
-            ),
-        ),
+        ("histogram_gradient_boosting", gradient_boosting_baseline()),
     ]:
         estimator.fit(tabular[0], labels[0])
         validation = estimator.predict_proba(tabular[1])[:, 1]

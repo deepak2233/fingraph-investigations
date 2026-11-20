@@ -1,0 +1,53 @@
+{
+  "dataset_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "target_sample_sha256": "fdf99aef30a47f5d59d5a7946fa958a9dbc8c1799c2f70831f3f85d057be5d53",
+  "cutoffs": [
+    "2022-09-04T00:00:00Z",
+    "2022-09-08T00:00:00Z",
+    "2022-09-09T00:00:00Z"
+  ],
+  "target_rows": [
+    82989,
+    24340,
+    43126
+  ],
+  "target_positives": [
+    110,
+    32,
+    74
+  ],
+  "sampled_history_edge_counts": [
+    103525,
+    186514,
+    210854
+  ],
+  "full_history_edge_counts": [
+    2076752,
+    3731672,
+    4214445
+  ],
+  "sampled_history": {
+    "test_ap": 0.08995267415848084,
+    "test_roc_auc": 0.9608265993857836,
+    "review_budget": 432,
+    "positives_found": 29,
+    "labelled_negatives_reviewed": 403,
+    "labelled_positives_missed": 45,
+    "precision_at_budget": 0.06712962962962964,
+    "recall_at_budget": 0.3918918918918919,
+    "test_rows_with_both_accounts_in_history": 27277,
+    "test_rows_with_neither_account_in_history": 5278
+  },
+  "full_history": {
+    "test_ap": 0.10898786679806557,
+    "test_roc_auc": 0.9612833066737648,
+    "review_budget": 432,
+    "positives_found": 30,
+    "labelled_negatives_reviewed": 402,
+    "labelled_positives_missed": 44,
+    "precision_at_budget": 0.06944444444444445,
+    "recall_at_budget": 0.40540540540540543,
+    "test_rows_with_both_accounts_in_history": 43045,
+    "test_rows_with_neither_account_in_history": 2
+  }
+}

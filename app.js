@@ -148,7 +148,7 @@ function drawNetwork(highlight = []) {
     nodes += `<g class="graph-node" role="button" tabindex="0" data-node="${id}" aria-label="Inspect ${esc(a.name)}"><circle cx="${x}" cy="${y}" r="23" fill="${id === "A001" ? "#e0f2e9" : "#f1f5f8"}" stroke="${id === "A001" ? "#63a68a" : "#9fb5c5"}" stroke-width="1.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="#4d7180">${id.slice(-3)}</text><text x="${x}" y="${y + 40}" text-anchor="middle" font-size="11" fill="#506b7a">${esc(a.name)}</text><text x="${x}" y="${y + 54}" text-anchor="middle" font-size="9" fill="#9ba9b2">${id}</text></g>`;
   }
   $("network").innerHTML =
-    `<svg viewBox="0 0 680 330" role="img" aria-label="${esc(selected.title)} directed transaction network"><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="#9bb1bf"/></marker></defs>${lines}${nodes}</svg>`;
+    `<svg viewBox="0 0 680 330" role="group" aria-label="${esc(selected.title)} directed transaction network"><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="#9bb1bf"/></marker></defs>${lines}${nodes}</svg>`;
   $("node-detail").textContent =
     "Select an account to inspect its synthetic identity.";
   document.querySelectorAll("[data-node]").forEach((e) => {

@@ -215,7 +215,7 @@ At gradient boosting's validation-selected fixed threshold of approximately 0.96
 
 The application provides:
 
-- PR and ROC curves with at most 250 displayed vertices; all headline metrics use every held-out prediction.
+- PR step curves retain every recall change and plateau endpoint. ROC retains every true-positive-rate change and plateau endpoint. The displayed areas reproduce average precision and ROC AUC; all held-out predictions contribute.
 - Budget controls for 0.1%, 0.5%, 1%, 2%, 5% and 10%, with exact reviewed/found/missed counts.
 - Per-model confusion matrices at validation-selected thresholds.
 - Reliability bins comparing mean score with observed positive frequency. No calibration fit is claimed.

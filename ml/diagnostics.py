@@ -8,10 +8,15 @@ def evaluation_detail(labels, scores, threshold):
     precision, recall, _ = precision_recall_curve(labels, scores)
     fpr, tpr, _ = roc_curve(labels, scores)
 
-    # The plots are compressed; all headline metrics use every held-out row.
-    def points(x, y):
-        ids = np.unique(np.linspace(0, len(x) - 1, min(250, len(x)), dtype=int))
-        return [[float(x[i]), float(y[i])] for i in ids]
+    # Retain both ends of every recall plateau. Uniform threshold subsampling can
+    # erase the high-score tail and give a misleading PR plot on rare positives.
+    # Precision is monotone within each constant-recall run, so only its two
+    # endpoints are needed to preserve the geometry and step-integrated AP.
+    pr_x, pr_y = recall[::-1], precision[::-1]
+    changes = np.flatnonzero(np.diff(pr_x) != 0)
+    keep = np.unique(np.concatenate(([0, len(pr_x) - 1], changes, changes + 1)))
+    roc_changes = np.flatnonzero(np.diff(tpr) != 0)
+    roc_keep = np.unique(np.concatenate(([0, len(fpr) - 1], roc_changes, roc_changes + 1)))
 
     tn, fp, fn, tp = confusion_matrix(labels, scores >= threshold, labels=[0, 1]).ravel()
     order = np.argsort(-scores, kind="stable")
@@ -44,9 +49,13 @@ def evaluation_detail(labels, scores, threshold):
                 }
             )
     return {
-        "pr_curve": points(recall[::-1], precision[::-1]),
-        "roc_curve": points(fpr, tpr),
-        "curve_policy": "At most 250 sampled curve vertices for display; metric computations use every row.",
+        "pr_curve": [[float(pr_x[i]), float(pr_y[i])] for i in keep],
+        "roc_curve": [[float(fpr[i]), float(tpr[i])] for i in roc_keep],
+        "curve_policy": (
+            "PR retains every recall change and plateau endpoint; render as steps. "
+            "ROC retains every true-positive-rate change and plateau endpoint. No uniform subsampling; "
+            "both plotted areas reproduce their headline metrics."
+        ),
         "confusion": {
             "tn": int(tn),
             "fp": int(fp),

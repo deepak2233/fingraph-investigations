@@ -18,6 +18,7 @@ function plot(
     xLabel = "Recall",
     yLabel = "Precision",
     baseline = null,
+    step = false,
   } = {},
 ) {
   const w = 560,
@@ -36,8 +37,14 @@ function plot(
   }
   if (baseline !== null)
     body += `<line x1="${l}" x2="${w - r}" y1="${sy(baseline)}" y2="${sy(baseline)}" stroke="#ab8a69" stroke-dasharray="4 4"/>`;
-  for (const line of series)
-    body += `<polyline points="${line.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" ")}" fill="none" stroke="${line.color}" stroke-width="2"/>`;
+  for (const line of series) {
+    const points = line.points.flatMap(([x, y], i) =>
+      step && i > 0
+        ? [[line.points[i - 1][0], y], [x, y]]
+        : [[x, y]],
+    );
+    body += `<polyline points="${points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" ")}" fill="none" stroke="${line.color}" stroke-width="2"/>`;
+  }
   return `<svg class="metric-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(yLabel)} versus ${esc(xLabel)}"><title>${esc(yLabel)} versus ${esc(xLabel)}</title>${body}<text x="${w / 2}" y="${h - 5}" text-anchor="middle">${esc(xLabel)}</text><text transform="translate(13 ${h / 2}) rotate(-90)" text-anchor="middle">${esc(yLabel)}</text></svg><div class="chart-legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`;
 }
 function bars(rows, label, scale = 1) {
@@ -184,16 +191,21 @@ function renderRdfFocus() {
     const type =
       info?.types.find((t) => t !== "fg:Party")?.replace("fg:", "") ||
       "Resource";
-    parts += `<g role="button" tabindex="0" data-rdf-node="${esc(id)}" aria-label="Inspect ${esc(id)}"><circle cx="${x}" cy="${y}" r="28" fill="${id === focus ? "#d8f4e8" : "#eef0f8"}" stroke="${id === focus ? "#087f68" : "#827ca2"}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10">${esc(id.replace("ex:", "").slice(-9))}</text><text x="${x}" y="${y + 44}" text-anchor="middle" font-size="10">${esc(id)}</text><text x="${x}" y="${y + 58}" text-anchor="middle" font-size="9" fill="#687e76">${esc(type)}</text></g>`;
+    const labelY = id !== focus && y < coords[focus][1] - 30 ? y - 48 : y + 44;
+    parts += `<g role="button" tabindex="0" data-rdf-node="${esc(id)}" aria-label="Inspect ${esc(id)}"><circle cx="${x}" cy="${y}" r="28" fill="${id === focus ? "#d8f4e8" : "#eef0f8"}" stroke="${id === focus ? "#087f68" : "#827ca2"}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10">${esc(id.replace("ex:", "").slice(-9))}</text><text x="${x}" y="${labelY}" text-anchor="middle" font-size="11">${esc(id)}</text><text x="${x}" y="${labelY + 14}" text-anchor="middle" font-size="10" fill="#687e76">${esc(type)}</text></g>`;
   }
   $("rdf-network").innerHTML =
-    `<svg viewBox="0 0 620 440" role="img" aria-label="One-hop RDF neighbourhood of ${esc(focus)}"><defs><marker id="rdf-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#819aab"/></marker></defs>${parts}</svg>`;
+    `<svg viewBox="0 0 620 440" role="group" aria-label="One-hop RDF neighbourhood of ${esc(focus)}"><defs><marker id="rdf-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#819aab"/></marker></defs>${parts}</svg>`;
   const out = explored.triples.filter((t) => t.subject === focus),
     incoming = explored.triples.filter((t) => !t.literal && t.object === focus);
   $("rdf-inspector").innerHTML =
     `<h4>${esc(focus)}</h4><p class="mono">${esc(node.iri)}</p><p>${esc(node.types.join(" · "))}</p>${table(
       ["Property", "Value", "Datatype"],
-      out.map((t) => [t.predicate, t.object, t.datatype ?? "Resource"]),
+      out.map((t) => [
+        t.predicate,
+        t.object,
+        t.literal ? t.datatype || "string literal" : "Resource IRI",
+      ]),
     )}<h4>Incoming references</h4>${
       incoming.length
         ? table(
@@ -227,6 +239,7 @@ function renderEvaluation() {
     }));
   $("pr-chart").innerHTML = plot(series("pr_curve"), {
     baseline: modelEntries[0][1].test.prevalence,
+    step: true,
   });
   $("roc-chart").innerHTML = plot(series("roc_curve"), {
     xLabel: "False positive rate",

@@ -81,3 +81,18 @@ def test_hosted_manifest_declares_the_runtime_dependencies():
     project = tomllib.loads((root / "pyproject.toml").read_text())
     runtime = set((root / "requirements.txt").read_text().splitlines())
     assert set(project["project"]["dependencies"]) == runtime
+
+
+def test_exported_plot_geometry_reproduces_metrics_for_every_model_and_split():
+    report = TestClient(app).get("/api/model/evaluation").json()
+    for model in report["models"].values():
+        for part in ["validation", "test"]:
+            result = model[part]
+            pr = result["pr_curve"]
+            roc = result["roc_curve"]
+            assert pr[0][0] == 0 and pr[-1][0] == 1
+            assert all(a[0] <= b[0] for a, b in zip(pr, pr[1:]))
+            step_area = sum((b[0] - a[0]) * b[1] for a, b in zip(pr, pr[1:]))
+            roc_area = sum((b[0] - a[0]) * (a[1] + b[1]) / 2 for a, b in zip(roc, roc[1:]))
+            assert step_area == pytest.approx(result["average_precision"], abs=1e-12)
+            assert roc_area == pytest.approx(result["roc_auc"], abs=1e-12)
